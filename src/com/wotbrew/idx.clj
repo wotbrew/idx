@@ -1,8 +1,12 @@
-(ns com.danstone.idx
-  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential)
+(ns com.wotbrew.idx
+  (:require [clojure.walk :as walk])
+  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var)
            (java.util Map$Entry Map List Set Collection RandomAccess)))
 
 (set! *warn-on-reflection* true)
+
+(defprotocol Property 
+  (-property [this element]))
 
 (defprotocol Idx
   "You should consider this protocol an implementation detail for now."
@@ -11,11 +15,11 @@
   (-get-eq [idx c])
   (-get-sorted [idx c]))
 
-(defn- eq-add-element [eq id old-element element]
+(defn- add-eq [eq id old-element element]
   (reduce-kv
     (fn [eq c i]
-      (let [ov (c old-element)
-            v (c element)]
+      (let [ov (-property c old-element)
+            v (-property c element)]
         (if (identical? ov v)
           eq
           (let [oset (get i ov #{})
@@ -29,10 +33,10 @@
     eq
     eq))
 
-(defn- eq-del-element [eq id old-element]
+(defn- del-eq [eq id old-element]
   (reduce-kv
     (fn [eq c i]
-      (let [ov (c old-element)]
+      (let [ov (-property c old-element)]
         (let [oset (get i ov #{})
               oset (disj oset id)
               i (if (empty? oset) (dissoc i ov) (assoc i ov oset))]
@@ -42,11 +46,11 @@
     eq
     eq))
 
-(defn- uniq-add-element [unq id old-element element]
+(defn- add-uniq [unq id old-element element]
   (reduce-kv
     (fn [unq c i]
-      (let [ov (c old-element)
-            v (c element)]
+      (let [ov (-property c old-element)
+            v (-property c element)]
         (if (identical? ov v)
           unq
           (let [i (dissoc i ov)
@@ -55,10 +59,10 @@
     unq
     unq))
 
-(defn- uniq-del-element [unq old-element]
+(defn- del-uniq [unq old-element]
   (reduce-kv
     (fn [unq c i]
-      (let [ov (c old-element)]
+      (let [ov (-property c old-element)]
         (let [i (dissoc i ov)]
           (if (empty? i)
             (dissoc unq c)
@@ -66,11 +70,11 @@
     unq
     unq))
 
-(defn- sorted-add-element [srt id old-element element]
+(defn- add-sorted [srt id old-element element]
   (reduce-kv
     (fn [srt c i]
-      (let [ov (c old-element)
-            v (c element)]
+      (let [ov (-property c old-element)
+            v (-property c element)]
         (if (identical? ov v)
           srt
           (let [oset (get i ov #{})
@@ -84,10 +88,10 @@
     srt
     srt))
 
-(defn- sorted-del-element [srt id old-element]
+(defn- del-sorted [srt id old-element]
   (reduce-kv
     (fn [srt c i]
-      (let [ov (c old-element)]
+      (let [ov (-property c old-element)]
         (let [oset (get i ov #{})
               oset (disj oset id)
               i (if (empty? oset) (dissoc i ov) (assoc i ov oset))]
@@ -107,7 +111,7 @@
   (-get-eq [idx c]
     (or (get eq c)
         (let [rf (fn [m id v]
-                   (let [ival (c v)]
+                   (let [ival (-property c v)]
                      (assoc! m ival (conj (get m ival #{}) id))))
               i (persistent! (reduce-kv rf (transient {}) m))
               eq (assoc eq c i)]
@@ -116,7 +120,7 @@
   (-get-uniq [idx c]
     (or (get uniq c)
         (let [rf (fn [m id v]
-                   (let [ival (c v)]
+                   (let [ival (-property c v)]
                      (assert (not (contains? m ival)))
                      (assoc! m ival id)))
               i (persistent! (reduce-kv rf (transient {}) m))
@@ -126,7 +130,7 @@
   (-get-sorted [idx c]
     (or (get sorted c)
         (let [rf (fn [m id v]
-                   (let [ival (c v)]
+                   (let [ival (-property c v)]
                      (assoc m ival (conj (get m ival #{}) id))))
               i (reduce-kv rf (sorted-map) m)
               srt (assoc sorted c i)]
@@ -166,9 +170,9 @@
       (if (identical? o1 old-element)
         (IndexedPersistentMap.
           (.assoc ^IPersistentMap m o o1)
-          (some-> eq (eq-add-element o old-element o1))
-          (some-> uniq (uniq-add-element o old-element o1))
-          (some-> sorted (sorted-add-element o old-element o1))))))
+          (some-> eq (add-eq o old-element o1))
+          (some-> uniq (add-uniq o old-element o1))
+          (some-> sorted (add-sorted o old-element o1))))))
   (assocEx [this o o1]
     (if (contains? m o)
       (throw (Exception. "Key already present"))
@@ -179,9 +183,9 @@
         this
         (IndexedPersistentMap.
           (.without ^IPersistentMap m o)
-          (some-> eq (eq-del-element o old-element))
-          (some-> uniq (uniq-del-element old-element))
-          (some-> sorted (sorted-del-element o old-element))))))
+          (some-> eq (del-eq o old-element))
+          (some-> uniq (del-uniq old-element))
+          (some-> sorted (del-sorted o old-element))))))
   Counted
   Iterable
   (iterator [this] (.iterator ^Iterable m))
@@ -233,7 +237,7 @@
   (-get-eq [idx c]
     (or (get eq c)
         (let [rf (fn [m id v]
-                   (let [ival (c v)]
+                   (let [ival (-property c v)]
                      (assoc! m ival (conj (get m ival #{}) id))))
               i (persistent! (reduce-kv rf (transient {}) v))
               eq (assoc eq c i)]
@@ -242,7 +246,7 @@
   (-get-uniq [idx c]
     (or (get uniq c)
         (let [rf (fn [m id v]
-                   (let [ival (c v)]
+                   (let [ival (-property c v)]
                      (assert (not (contains? m ival)))
                      (assoc! m ival id)))
               i (persistent! (reduce-kv rf (transient {}) v))
@@ -252,7 +256,7 @@
   (-get-sorted [idx c]
     (or (get sorted c)
         (let [rf (fn [m id v]
-                   (let [ival (c v)]
+                   (let [ival (-property c v)]
                      (assoc m ival (conj (get m ival #{}) id))))
               i (reduce-kv rf (sorted-map) v)
               srt (assoc sorted c i)]
@@ -302,16 +306,16 @@
         this
         (IndexedPersistentVector.
           v
-          (some-> eq (eq-add-element i old-element val))
-          (some-> uniq (uniq-add-element i old-element val))
-          (some-> sorted (sorted-add-element i old-element val))))))
+          (some-> eq (add-eq i old-element val))
+          (some-> uniq (add-uniq i old-element val))
+          (some-> sorted (add-sorted i old-element val))))))
   (cons [this o]
     (let [i (.length ^IPersistentVector v)]
       (IndexedPersistentVector.
         (.cons ^IPersistentVector v val)
-        (some-> eq (eq-add-element i nil val))
-        (some-> uniq (uniq-add-element i nil val))
-        (some-> sorted (sorted-add-element i nil val)))))
+        (some-> eq (add-eq i nil val))
+        (some-> uniq (add-uniq i nil val))
+        (some-> sorted (add-sorted i nil val)))))
   Seqable
   (seq [this] (.seq ^Seqable v))
   Reversible
@@ -330,9 +334,9 @@
           old-element (if (neg? i) nil (nth this i))]
       (IndexedPersistentVector.
         (pop ^IPersistentStack v)
-        (some-> eq (eq-del-element i old-element))
-        (some-> uniq (uniq-del-element old-element))
-        (some-> sorted (sorted-del-element i old-element)))))
+        (some-> eq (del-eq i old-element))
+        (some-> uniq (del-uniq old-element))
+        (some-> sorted (del-sorted i old-element)))))
   ILookup
   (valAt [this key] (.valAt ^ILookup v key))
   (valAt [this key notFound] (.valAt ^ILookup v key notFound))
@@ -364,7 +368,7 @@
   (-get-eq [idx c]
     (or (get eq c)
         (let [rf (fn [m id]
-                   (let [ival (c id)]
+                   (let [ival (-property c id)]
                      (assoc! m ival (conj (get m ival #{}) id))))
               i (persistent! (reduce rf (transient {}) s))
               eq (assoc eq c i)]
@@ -373,7 +377,7 @@
   (-get-uniq [idx c]
     (or (get uniq c)
         (let [rf (fn [m id]
-                   (let [ival (c id)]
+                   (let [ival (-property c id)]
                      (assert (not (contains? m ival)))
                      (assoc! m ival id)))
               i (persistent! (reduce rf (transient {}) s))
@@ -383,7 +387,7 @@
   (-get-sorted [idx c]
     (or (get sorted c)
         (let [rf (fn [m id]
-                   (let [ival (c id)]
+                   (let [ival (-property c id)]
                      (assoc m ival (conj (get m ival #{}) id))))
               i (reduce rf (sorted-map) s)
               srt (assoc sorted c i)]
@@ -416,9 +420,9 @@
         this
         (IndexedPersistentSet.
           ns
-          (some-> eq (eq-del-element key key))
-          (some-> uniq (uniq-del-element key))
-          (some-> sorted (sorted-del-element key key))))))
+          (some-> eq (del-eq key key))
+          (some-> uniq (del-uniq key))
+          (some-> sorted (del-sorted key key))))))
   (contains [this key] (.contains ^IPersistentSet s key))
   (get [this key] (.get ^IPersistentSet s key))
   Seqable
@@ -431,9 +435,9 @@
         this
         (IndexedPersistentSet.
           ns
-          (some-> eq (eq-add-element o nil o))
-          (some-> uniq (uniq-add-element o nil o))
-          (some-> sorted (sorted-add-element o nil o))))))
+          (some-> eq (add-eq o nil o))
+          (some-> uniq (add-uniq o nil o))
+          (some-> sorted (add-sorted o nil o))))))
   (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) nil nil nil))
   (equiv [this o] (.equiv ^IPersistentSet s o))
   Object
@@ -465,18 +469,32 @@
   [coll]
   (-wrap coll))
 
-(defn lookup [idx c v]
+(defn lookup
+  "Returns an (unordered) seq of items where (-property c element) equals v.
+
+  c is a function, but it is expected that you use functions with equality semantics."
+  [idx c v]
   (let [i (-get-eq idx c)
         set (get i v)]
     (map (partial -element idx) set)))
 
-(defn identify [idx c v]
+(defn identify
+  "Returns the unique element where (-property c element) equals v.
+
+  c is a function, but it is expected that you use functions with equality semantics."
+  [idx c v]
   (let [i (-get-uniq idx c)
         id (get i v)]
     (when (some? id)
       (-element idx id))))
 
-(defn ascending [idx c test v]
+(defn ascending
+  "Returns an ascending order seq of elements where (test (-property c element) v) returns true.
+
+  The order is defined by the value of v.
+
+  This is much like subseq in the clojure.core."
+  [idx c test v]
   (let [i (-get-sorted idx c)]
     (if (some? i)
       (->> (subseq i test v)
@@ -484,7 +502,13 @@
            (map (partial -element idx)))
       ())))
 
-(defn descending [idx c test v]
+(defn descending
+  "Returns a descending order seq of elements where (test (-property c element) v) returns true.
+
+  The order is defined by the value of v.
+
+  This is much like subseq in the clojure.core."
+  [idx c test v]
   (let [i (-get-sorted idx c)]
     (if (some? i)
       (->> (rsubseq i test v)
@@ -492,5 +516,73 @@
            (map (partial -element idx)))
       ())))
 
-(deftype Path [ks] IFn (invoke [this o] (get-in o ks)))
-(defn path [ks] (->Path ks))
+(extend-protocol Property
+  Keyword
+  (-property [this element] (this element))
+  Object
+  (-property [this element] (get element this))
+  Var
+  (-property [this element] (this element))
+  nil
+  (-property [this element] (get element nil)))
+
+(deftype Prop [form f]
+  Property
+  (-property [this element] (f element))
+  Object
+  (equals [this obj] (and (instance? Prop obj) (= form (.-form ^Prop obj))))
+  (hashCode [this] (.hashCode form)))
+
+(defn- ->sym
+  [x]
+  (if (var? x)
+    (let [^Var v x]
+      (symbol (str (.name (.ns v))) (str (.sym v))))
+    x))
+
+(defn- unfn [expr]
+  (if (and (seq? expr)
+           (symbol? (first expr))
+           (= "fn*" (name (first expr))))
+    (let [[[s] & form] (rest expr)]
+      (conj (walk/postwalk-replace {s '%} form) '[%] 'fn))
+    expr))
+
+(defn- res [form]
+  (cond
+    (keyword? form) form
+    (symbol? form) (or (-> form resolve ->sym) form)
+    (sequential? form) (walk/postwalk #(if (symbol? %) (res %) %) (unfn form))
+    :else form))
+
+(defmacro prop
+  "Given a function form, yields a property that will return the result of evaluating that function.
+
+  Equality is defined as form equality."
+  [form]
+  (cond
+    (keyword? form) form
+    (var? form) form
+    :else `(->Prop '~(res form) ~form)))
+
+(def value
+  "This property uses the element itself as a value."
+  (reify Property (-property [this element] element)))
+
+(defrecord K [k]
+  Property
+  (-property [this element] (get element k)))
+
+(defrecord KPath [ks]
+  Property
+  (-property [this element] (get-in element ks)))
+
+(defn k
+  "Returns a property that will (get element k) for its value."
+  [k]
+  (->K k))
+
+(defn kpath
+  "Returns a property that will (get-in element k) for its value."
+  [ks]
+  (->KPath ks))
