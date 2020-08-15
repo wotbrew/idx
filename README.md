@@ -6,8 +6,8 @@ alternative fast access paths to their elements.
 ## Features
 
 - Wrappers for vectors, sets and maps.
-- Index elements on demand by any property, such as: **functions** `(f element)`, **keys** `(get element k)` **paths** `(get-in element ks)` and anything satisfying the Property protocol.
-- Indexes are computed on demand, cached transparently and reused for subsequent queries
+- Index elements on demand by any property, such as: **functions** `(f element)`, **keys** `(get element k)` **paths** `(get-in element ks)` and anything satisfying the Property protocol. See [reference](#built-in-properties)
+- Indexes are cached transparently and reused for subsequent queries
 - Indexes are maintained incrementally through `conj`, `assoc` and so on once cached.
   
 ## Usage
@@ -29,18 +29,39 @@ No indexes are created at this point.
 ### Query your collection 
 
 ```clojure
+
+(def coll (idx [{:foo 42, :id 1, :counter 453}, {:foo 42, :id 0, :counter 23}, {:foo 43, :id 2, :counter 43}]))
+(def coll2 (idx (vec (range 100))))
+
 ;; one-to-many hash indexes, such as what you would get from (group-by). Unlike group-by the resulting sequences
 ;; are unordered.
-(group coll :foo 42) ;; all elements where (:foo element) == 42
-(group coll2 even? true) ;; all elements where (even? element) == true
-(group coll2 even?) ;; short hand for all elements where (even? element) returns truthy.
+(group coll :foo 42)
+;; =>
+({:foo 42, :id 0, :counter 23}, {:foo 42, :id 1, :counter 453})
+
+;; can query by a function (careful of equality)
+(group coll2 even? true) 
+;; => 
+(0,2,4 ...)
+
+;; 2-ary form for truthyness index
+(group coll2 even?)
+;; =>
+(0,2,4 ...)
 
 ;; one-to-one hash indexes for unique elements, cheaper than group when you have exactly one element for each value of the property.
-(identify coll :id 0) ;; returns the single element where (:id element) == 0
+(identify coll :id 0) 
+;; => 
+{:foo 42, :id 0, :counter 23}
 
 ;; sorted indexes 
 (ascending coll :counter > 42) ;; all elements where (:counter element) > 42 in ascending order
+;; => 
+({:foo 43, :id 2, :counter 43}, {:foo 42, :id 1, :counter 453})
+
 (descending coll :counter < 42) ;; all elements where (:counter element) < 42 in descending order
+;; =>
+({:foo 42, :id 0, :counter 23})
 ```
 
 Using a query function will construct and then cache the index needed to satisfy the query. The indexes are cached
@@ -54,6 +75,16 @@ Use normal clojure modification operators, `conj`, `assoc`, `into` whatever you 
 
 As maintaining indexes can become expensive if you want to make a lot of modifications, you can unwrap the indexed structure
 with `(unwrap coll)`.
+
+## Reference
+
+### Built-in Properties
+
+- functions
+- paths with `(path ks)` for `(get-in element ks)`
+- key selections with `(select ks)` for `(select-keys ks)`
+- anything other object is looked up with `(get element o)`
+- escape to `(get element o)` with `(as-key o)`
 
 ## License
 

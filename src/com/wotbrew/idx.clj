@@ -596,10 +596,6 @@
     (var? form) form
     :else `(->Prop '~(res form) ~form)))
 
-(def value
-  "This property uses the element itself as a value."
-  (reify Property (-property [this element] element)))
-
 (defrecord AsKey [k]
   Property
   (-property [this element] (get element k)))
