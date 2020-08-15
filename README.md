@@ -6,7 +6,7 @@ alternative fast access paths to their elements.
 ## Features
 
 - Wrappers for vectors, sets and maps.
-- Index elements on demand by any property, such as: **functions** `(f element)`, **keys** `(get element k)` **paths** `(get-in element ks)` and anything satisfying the Property protocol. See [reference](#built-in-properties)
+- Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#built-in-properties)
 - Indexes are cached transparently and reused for subsequent queries
 - Indexes are maintained incrementally through `conj`, `assoc` and so on once cached.
 
@@ -31,7 +31,7 @@ All functions are available in the `com.wotbrew.idx` namespace.
 
 This is very cheap, returns a new collection matching the type of the input. Implementations are provided for vectors, maps and sets.
 
-No indexes are created at this point.
+If you pass in an already indexed collection, it is returned as is.
 
 ### Query your collection 
 
