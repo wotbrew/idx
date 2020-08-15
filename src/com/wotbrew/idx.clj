@@ -10,7 +10,6 @@
 
 (defprotocol Idx
   "You should consider this protocol an implementation detail for now."
-  (-element [idx id])
   (-get-uniq [idx p])
   (-get-eq [idx p])
   (-get-sorted [idx p]))
@@ -107,7 +106,6 @@
    ^:unsynchronized-mutable uniq
    ^:unsynchronized-mutable sorted]
   Idx
-  (-element [idx id] (get m id))
   (-get-eq [idx p]
     (or (get eq p)
         (let [rf (fn [m id v]
@@ -233,7 +231,6 @@
    ^:unsynchronized-mutable uniq
    ^:unsynchronized-mutable sorted]
   Idx
-  (-element [idx id] (nth v id))
   (-get-eq [idx p]
     (or (get eq p)
         (let [rf (fn [m id v]
@@ -364,7 +361,6 @@
    ^:unsynchronized-mutable uniq
    ^:unsynchronized-mutable sorted]
   Idx
-  (-element [idx id] (get s id))
   (-get-eq [idx p]
     (or (get eq p)
         (let [rf (fn [m id]
@@ -477,17 +473,22 @@
   (-unwrap [coll] (with-meta (.-s ^IndexedPersistentSet coll) nil)))
 
 (defn idx
-  "Takes a collection and wraps it so that its elements support indexed queries. Indexes are created on demand to satisfy queries
-  and then are reused. Indexes once realised will be maintained incrementally.
+  "Takes a set, vector or map and wraps it so that its elements support indexed queries.
+
+  Indexes are created on demand to satisfy queries and then are reused.
+
+  Indexes once realised will be maintained incrementally as you call conj, assoc and so on on the collection.
 
   The coll must be an associative collection (vector, map or set). If your collection is not associative, it is converted to a vector.
 
-  Metadata is carried over to the new structure."
+  Metadata is carried over to the new structure.
+
+  If the collection is already indexed, it is returned as-is without modification."
   [coll]
   (-wrap coll))
 
 (defn unwrap
-  "Returns the backing data structure without indexes."
+  "Returns the backing collection without indexes."
   [coll]
   (-unwrap coll))
 
@@ -496,14 +497,16 @@
   (-property [this element] (boolean (-property p element))))
 
 (defn group
-  "Returns an (unordered) seq of items where (-property p element) equals v.
+  "Returns an (unordered) seq of items where (p element) equals v.
 
-  p is a function, but it is expected that you use functions with equality semantics."
+  p is a function, but it is expected that you use functions with equality semantics.
+
+  The 2-ary form finds all elements where (p element) returns truthy."
   ([idx p] (group idx (->Truthiness p) true))
   ([idx p v]
    (let [i (-get-eq idx p)
          set (get i v)]
-     (map (partial -element idx) set))))
+     (map idx set))))
 
 (defn identify
   "Returns the unique element where (-property p element) equals v.
@@ -513,7 +516,7 @@
   (let [i (-get-uniq idx p)
         id (get i v)]
     (when (some? id)
-      (-element idx id))))
+      (idx id))))
 
 (defn ascending
   "Returns an ascending order seq of elements where (test (-property p element) v) returns true.
@@ -526,7 +529,7 @@
     (if (some? i)
       (->> (subseq i test v)
            (mapcat val)
-           (map (partial -element idx)))
+           (map idx))
       ())))
 
 (defn descending
@@ -540,7 +543,7 @@
     (if (some? i)
       (->> (rsubseq i test v)
            (mapcat val)
-           (map (partial -element idx)))
+           (map idx))
       ())))
 
 (extend-protocol Property
