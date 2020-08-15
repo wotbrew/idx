@@ -359,7 +359,7 @@
   (peek [this] (.peek ^IPersistentStack v))
   (pop [this]
     (let [i (.length ^IPersistentVector v)
-          old-element (if (neg? i) nil (nth this i))]
+          old-element (if (neg? i) nil (nth this (dec i)))]
       (IndexedPersistentVector.
         (pop ^IPersistentStack v)
         (some-> eq (del-eq i old-element))
@@ -568,7 +568,7 @@
 
   The order is defined by the value of v.
 
-  This is much like subseq in the clojure.core."
+  This is much like rsubseq in the clojure.core."
   [idx p test v]
   (let [i (-get-sorted idx p)]
     (if (some? i)

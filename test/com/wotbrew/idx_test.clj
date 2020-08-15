@@ -14,7 +14,13 @@
       (is (sequential? (group v2 even?)))
       (is (identical? (-get-eq v2 even?) (-get-eq v2 even?)))
       (is (= (filter even? v) (sort (group v2 even?))))
-      (is (= (filter even? (conj v 12)) (sort (group (conj v2 12) even?)))))))
+      (is (= (filter even? (conj v 12)) (sort (group (conj v2 12) even?))))
+
+      (is (= 4 (identify v2 identity 4)))
+      (is (= 4 (identify v2 inc 5)))
+      (is (= 4 (identify v2 (prop #(+ % 2)) 6)))
+
+      (is (= (filter even? (pop v)) (sort (group (pop v2) even?)))))))
 
 (deftest indexed-set-test
   )
