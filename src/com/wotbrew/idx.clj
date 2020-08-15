@@ -15,7 +15,7 @@
   (-get-sorted [idx p]))
 
 ;; for eq/sorted leaves we use maps rather than sets so
-;; we get the PersistentArrayMap optimisation when small and faster reduce.
+;; we get the PersistentArrayMap optimisation when small.
 
 (defn- add-eq
   ([eq id element]
@@ -568,10 +568,10 @@
   ([idx p] (group idx (->Truthiness p) true))
   ([idx p v]
    (let [i (-get-eq idx p)
-         m (get i v)
+         m (get i v {})
          a (object-array (count m))]
      (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
-     (LazilyPersistentVector/create a))))
+     (LazilyPersistentVector/createOwning a))))
 
 (defn identify
   "Returns the unique element where (-property p element) equals v.
