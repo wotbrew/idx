@@ -38,8 +38,8 @@ If you pass in an already indexed collection, it is returned as is.
 (def coll (idx [{:foo 42, :id 1, :counter 453}, {:foo 42, :id 0, :counter 23}, {:foo 43, :id 2, :counter 43}]))
 (def coll2 (idx (vec (range 100))))
 
-;; one-to-many hash indexes, such as what you would get from (group-by). Unlike group-by the resulting sequences
-;; are unordered.
+;; one-to-many hash indexes, such as what you would get from (group-by). 
+;; Unlike group-by the resulting sequences are unordered.
 (group coll :foo 42)
 ;; =>
 ({:foo 42, :id 0, :counter 23}, {:foo 42, :id 1, :counter 453})
@@ -76,7 +76,7 @@ against the collection instance, much like hash codes in clojure.
 
 Any indexes cached against your collection will be maintained incrementally with new versions of the data structure.
 
-Use normal clojure modification operators, `conj`, `assoc`, `into` whatever you would like.
+Use normal clojure collection functions such as `conj`, `assoc`, `dissoc`, `disj` `into`. 
 
 As maintaining indexes can become expensive if you want to make a lot of modifications, you can unwrap the indexed structure
 with `(unwrap coll)`.
@@ -88,8 +88,8 @@ with `(unwrap coll)`.
 - functions
 - paths with `(path ks)` for `(get-in element ks)`
 - key selections with `(select ks)` for `(select-keys ks)`
-- anything other object is looked up with `(get element o)`
-- escape to `(get element o)` with `(as-key o)`
+- any other object is looked up with `(get element o)`
+- escape functions to `(get element o)` with `(as-key o)`
 
 ## License
 
