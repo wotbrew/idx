@@ -19,8 +19,6 @@ alternative fast access paths to their elements.
 
 ## Usage
 
-First include the artifact ```[com.wotbrew/idx "1.0.0"]``` or in deps `{com.wotbrew/idx {:mvn/version "1.0.0"}}`
-
 All functions are available in the `com.wotbrew.idx` namespace.
 
 ### Wrap your collection
