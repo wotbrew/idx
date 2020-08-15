@@ -14,23 +14,34 @@
   (-get-eq [idx p])
   (-get-sorted [idx p]))
 
-(defn- add-eq [eq id old-element element]
-  (reduce-kv
-    (fn [eq p i]
-      (let [ov (-property p old-element)
-            v (-property p element)]
-        (if (identical? ov v)
-          eq
-          (let [oset (get i ov #{})
-                oset (disj oset id)
-                i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
+(defn- add-eq
+  ([eq id element]
+   (reduce-kv
+     (fn [eq p i]
+       (let [v (-property p element)
+             nset (get i v #{})
+             nset (conj nset id)
+             i (assoc i v nset)]
+         (assoc eq p i)))
+     eq
+     eq))
+  ([eq id old-element element]
+   (reduce-kv
+     (fn [eq p i]
+       (let [ov (-property p old-element)
+             v (-property p element)]
+         (if (identical? ov v)
+           eq
+           (let [oset (get i ov #{})
+                 oset (disj oset id)
+                 i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
-                nset (get i v #{})
-                nset (conj nset id)
-                i (assoc i v nset)]
-            (assoc eq p i)))))
-    eq
-    eq))
+                 nset (get i v #{})
+                 nset (conj nset id)
+                 i (assoc i v nset)]
+             (assoc eq p i)))))
+     eq
+     eq)))
 
 (defn- del-eq [eq id old-element]
   (reduce-kv
@@ -45,18 +56,27 @@
     eq
     eq))
 
-(defn- add-uniq [unq id old-element element]
-  (reduce-kv
-    (fn [unq p i]
-      (let [ov (-property p old-element)
-            v (-property p element)]
-        (if (identical? ov v)
-          unq
-          (let [i (dissoc i ov)
-                i (assoc i v id)]
-            (assoc unq p i)))))
-    unq
-    unq))
+(defn- add-uniq
+  ([unq id element]
+   (reduce-kv
+     (fn [unq p i]
+       (let [v (-property p element)
+             i (assoc i v id)]
+         (assoc unq p i)))
+     unq
+     unq))
+  ([unq id old-element element]
+   (reduce-kv
+     (fn [unq p i]
+       (let [ov (-property p old-element)
+             v (-property p element)]
+         (if (identical? ov v)
+           unq
+           (let [i (dissoc i ov)
+                 i (assoc i v id)]
+             (assoc unq p i)))))
+     unq
+     unq)))
 
 (defn- del-uniq [unq old-element]
   (reduce-kv
@@ -69,23 +89,34 @@
     unq
     unq))
 
-(defn- add-sorted [srt id old-element element]
-  (reduce-kv
-    (fn [srt p i]
-      (let [ov (-property p old-element)
-            v (-property p element)]
-        (if (identical? ov v)
-          srt
-          (let [oset (get i ov #{})
-                oset (disj oset id)
-                i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
+(defn- add-sorted
+  ([srt id element]
+   (reduce-kv
+     (fn [srt p i]
+       (let [v (-property p element)
+             nset (get i v #{})
+             nset (conj nset id)
+             i (assoc i v nset)]
+         (assoc srt p i)))
+     srt
+     srt))
+  ([srt id old-element element]
+   (reduce-kv
+     (fn [srt p i]
+       (let [ov (-property p old-element)
+             v (-property p element)]
+         (if (identical? ov v)
+           srt
+           (let [oset (get i ov #{})
+                 oset (disj oset id)
+                 i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
-                nset (get i v #{})
-                nset (conj nset id)
-                i (assoc i v nset)]
-            (assoc srt p i)))))
-    srt
-    srt))
+                 nset (get i v #{})
+                 nset (conj nset id)
+                 i (assoc i v nset)]
+             (assoc srt p i)))))
+     srt
+     srt)))
 
 (defn- del-sorted [srt id old-element]
   (reduce-kv
@@ -306,13 +337,13 @@
           (some-> eq (add-eq i old-element val))
           (some-> uniq (add-uniq i old-element val))
           (some-> sorted (add-sorted i old-element val))))))
-  (cons [this o]
+  (cons [this val]
     (let [i (.length ^IPersistentVector v)]
       (IndexedPersistentVector.
         (.cons ^IPersistentVector v val)
-        (some-> eq (add-eq i nil val))
-        (some-> uniq (add-uniq i nil val))
-        (some-> sorted (add-sorted i nil val)))))
+        (some-> eq (add-eq i val))
+        (some-> uniq (add-uniq i val))
+        (some-> sorted (add-sorted i val)))))
   Seqable
   (seq [this] (.seq ^Seqable v))
   Reversible
@@ -431,9 +462,9 @@
         this
         (IndexedPersistentSet.
           ns
-          (some-> eq (add-eq o nil o))
-          (some-> uniq (add-uniq o nil o))
-          (some-> sorted (add-sorted o nil o))))))
+          (some-> eq (add-eq o o))
+          (some-> uniq (add-uniq o o))
+          (some-> sorted (add-sorted o o))))))
   (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) nil nil nil))
   (equiv [this o] (.equiv ^IPersistentSet s o))
   Object
@@ -463,7 +494,7 @@
 (extend-protocol Unwrap
   nil
   (-unwrap [coll] coll)
-  Object 
+  Object
   (-unwrap [coll] coll)
   IndexedPersistentMap
   (-unwrap [coll] (with-meta (.-m ^IndexedPersistentMap coll) nil))
