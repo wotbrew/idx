@@ -491,14 +491,19 @@
   [coll]
   (-unwrap coll))
 
+(defrecord Truthiness [p]
+  Property
+  (-property [this element] (boolean (-property p element))))
+
 (defn group
   "Returns an (unordered) seq of items where (-property p element) equals v.
 
   p is a function, but it is expected that you use functions with equality semantics."
-  [idx p v]
-  (let [i (-get-eq idx p)
-        set (get i v)]
-    (map (partial -element idx) set)))
+  ([idx p] (group idx (->Truthiness p) true))
+  ([idx p v]
+   (let [i (-get-eq idx p)
+         set (get i v)]
+     (map (partial -element idx) set))))
 
 (defn identify
   "Returns the unique element where (-property p element) equals v.

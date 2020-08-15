@@ -1,6 +1,7 @@
 # idx
 
-This library provides clojure data structures (maps, sets and vectors) with on-demand secondary indexes.
+This library provides clojure data structures (maps, sets and vectors) with on-demand secondary indexes. Providing 
+alternative fast access paths to their elements.
 
 ## Features
 
@@ -31,7 +32,8 @@ No indexes are created at this point.
 ;; one-to-many hash indexes, such as what you would get from (group-by). Unlike group-by the resulting sequences
 ;; are unordered.
 (group coll :foo 42) ;; all elements where (:foo element) == 42
-(group coll2 even? true) ;; all elements where (even? element) == 42
+(group coll2 even? true) ;; all elements where (even? element) == true
+(group coll2 even?) ;; short hand for all elements where (even? element) returns truthy.
 
 ;; one-to-one hash indexes for unique elements, cheaper than group when you have exactly one element for each value of the property.
 (identify coll :id 0) ;; returns the single element where (:id element) == 0
