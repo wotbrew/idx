@@ -333,7 +333,7 @@
       (if (identical? val old-element)
         this
         (IndexedPersistentVector.
-          v
+          (.assocN ^IPersistentVector v i val)
           (some-> eq (add-eq i old-element val))
           (some-> uniq (add-uniq i old-element val))
           (some-> sorted (add-sorted i old-element val))))))
