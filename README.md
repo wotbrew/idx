@@ -76,7 +76,7 @@ against the collection instance, much like hash codes in clojure.
 
 Any indexes cached against your collection will be maintained incrementally with new versions of the data structure.
 
-Use normal clojure collection functions such as `conj`, `assoc`, `dissoc`, `disj` `into`. 
+Use normal clojure collection functions such as `conj`, `assoc`, `dissoc`, `disj` and `into`. 
 
 As maintaining indexes can become expensive if you want to make a lot of modifications, you can unwrap the indexed structure
 with `(unwrap coll)`.
