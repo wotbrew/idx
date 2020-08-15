@@ -399,6 +399,7 @@
   (equals [this obj] (.equals v obj))
   (toString [this] (.toString v))
   Sequential
+  RandomAccess
   IFn
   (invoke [this arg1] (.invoke ^IFn v arg1))
   (invoke [this arg1 arg2] (.invoke ^IFn v arg1 arg2))
