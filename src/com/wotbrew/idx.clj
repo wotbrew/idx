@@ -1,7 +1,7 @@
 (ns com.wotbrew.idx
   (:require [clojure.walk :as walk])
-  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn)
-           (java.util Map$Entry Map List Set Collection RandomAccess)))
+  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector)
+           (java.util Map$Entry Map List Set Collection RandomAccess ArrayList)))
 
 (set! *warn-on-reflection* true)
 
@@ -14,13 +14,16 @@
   (-get-eq [idx p])
   (-get-sorted [idx p]))
 
+;; for eq/sorted leaves we use maps rather than sets so
+;; we get the PersistentArrayMap optimisation when small and faster reduce.
+
 (defn- add-eq
   ([eq id element]
    (reduce-kv
      (fn [eq p i]
        (let [v (-property p element)
-             nset (get i v #{})
-             nset (conj nset id)
+             nset (get i v {})
+             nset (assoc nset id id)
              i (assoc i v nset)]
          (assoc eq p i)))
      eq
@@ -32,12 +35,12 @@
              v (-property p element)]
          (if (identical? ov v)
            eq
-           (let [oset (get i ov #{})
-                 oset (disj oset id)
+           (let [oset (get i ov {})
+                 oset (dissoc oset id)
                  i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
-                 nset (get i v #{})
-                 nset (conj nset id)
+                 nset (get i v {})
+                 nset (assoc nset id id)
                  i (assoc i v nset)]
              (assoc eq p i)))))
      eq
@@ -47,8 +50,8 @@
   (reduce-kv
     (fn [eq p i]
       (let [ov (-property p old-element)]
-        (let [oset (get i ov #{})
-              oset (disj oset id)
+        (let [oset (get i ov {})
+              oset (dissoc oset id)
               i (if (empty? oset) (dissoc i ov) (assoc i ov oset))]
           (if (empty? i)
             (dissoc eq p)
@@ -94,8 +97,8 @@
    (reduce-kv
      (fn [srt p i]
        (let [v (-property p element)
-             nset (get i v #{})
-             nset (conj nset id)
+             nset (get i v {})
+             nset (assoc nset id id)
              i (assoc i v nset)]
          (assoc srt p i)))
      srt
@@ -107,12 +110,12 @@
              v (-property p element)]
          (if (identical? ov v)
            srt
-           (let [oset (get i ov #{})
-                 oset (disj oset id)
+           (let [oset (get i ov {})
+                 oset (dissoc oset id)
                  i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
-                 nset (get i v #{})
-                 nset (conj nset id)
+                 nset (get i v {})
+                 nset (assoc nset id id)
                  i (assoc i v nset)]
              (assoc srt p i)))))
      srt
@@ -122,8 +125,8 @@
   (reduce-kv
     (fn [srt p i]
       (let [ov (-property p old-element)]
-        (let [oset (get i ov #{})
-              oset (disj oset id)
+        (let [oset (get i ov {})
+              oset (dissoc oset id)
               i (if (empty? oset) (dissoc i ov) (assoc i ov oset))]
           (if (empty? i)
             (dissoc srt p)
@@ -141,7 +144,7 @@
     (or (get eq p)
         (let [rf (fn [m id v]
                    (let [ival (-property p v)]
-                     (assoc! m ival (conj (get m ival #{}) id))))
+                     (assoc! m ival (assoc (get m ival {}) id id))))
               i (persistent! (reduce-kv rf (transient {}) m))
               eq (assoc eq p i)]
           (set! (.-eq idx) eq)
@@ -160,7 +163,7 @@
     (or (get sorted p)
         (let [rf (fn [m id v]
                    (let [ival (-property p v)]
-                     (assoc m ival (conj (get m ival #{}) id))))
+                     (assoc m ival (assoc (get m ival {}) id id))))
               i (reduce-kv rf (sorted-map) m)
               srt (assoc sorted p i)]
           (set! (.-sorted idx) srt)
@@ -189,14 +192,23 @@
   (hasheq [this] (.hasheq ^IHashEq m))
 
   IFn
-  (invoke [this o o1] (.invoke ^IFn m o1))
-  (invoke [this o o1 o2] (.invoke ^IFn m o1 o2))
+  (invoke [this o] (.invoke ^IFn m o))
+  (invoke [this o o1] (.invoke ^IFn m o o1))
   (applyTo [this arglist] (apply m arglist))
 
   IPersistentMap
   (assoc [this o o1]
-    (let [old-element (get this o)]
-      (if (identical? o1 old-element)
+    (let [old-element (get this o ::not-found)]
+      (cond
+        (identical? o1 old-element) this
+        (identical? old-element ::not-found)
+        (IndexedPersistentMap.
+          (.assoc ^IPersistentMap m o o1)
+          (some-> eq (add-eq o o1))
+          (some-> uniq (add-uniq o o1))
+          (some-> sorted (add-sorted o o1)))
+
+        :else
         (IndexedPersistentMap.
           (.assoc ^IPersistentMap m o o1)
           (some-> eq (add-eq o old-element o1))
@@ -231,8 +243,7 @@
       (if (= 2 (count o))
         (throw (IllegalArgumentException. "Vector arg to map conj must be a pair"))
         (.assoc this (nth o 0) (nth o 1)))
-      (map? o)
-      (reduce-kv assoc this o)
+      (map? o) (reduce-kv assoc this o)
       :else
       (reduce
         (fn [^IPersistentMap this ^Map$Entry e]
@@ -266,7 +277,7 @@
     (or (get eq p)
         (let [rf (fn [m id v]
                    (let [ival (-property p v)]
-                     (assoc! m ival (conj (get m ival #{}) id))))
+                     (assoc! m ival (assoc (get m ival {}) id id))))
               i (persistent! (reduce-kv rf (transient {}) v))
               eq (assoc eq p i)]
           (set! (.-eq idx) eq)
@@ -285,7 +296,7 @@
     (or (get sorted p)
         (let [rf (fn [m id v]
                    (let [ival (-property p v)]
-                     (assoc m ival (conj (get m ival #{}) id))))
+                     (assoc m ival (assoc (get m ival {}) id id))))
               i (reduce-kv rf (sorted-map) v)
               srt (assoc sorted p i)]
           (set! (.-sorted idx) srt)
@@ -329,9 +340,18 @@
   IPersistentVector
   (length [this] (.length ^IPersistentVector v))
   (assocN [this i val]
-    (let [old-element (nth this i)]
-      (if (identical? val old-element)
-        this
+    (let [old-element (nth this i ::not-found)]
+      (cond
+        (identical? val old-element) this
+
+        (identical? val ::not-found)
+        (IndexedPersistentVector.
+          (.assocN ^IPersistentVector v i val)
+          (some-> eq (add-eq i val))
+          (some-> uniq (add-uniq i val))
+          (some-> sorted (add-sorted i val)))
+
+        :else
         (IndexedPersistentVector.
           (.assocN ^IPersistentVector v i val)
           (some-> eq (add-eq i old-element val))
@@ -396,7 +416,7 @@
     (or (get eq p)
         (let [rf (fn [m id]
                    (let [ival (-property p id)]
-                     (assoc! m ival (conj (get m ival #{}) id))))
+                     (assoc! m ival (assoc (get m ival {}) id id))))
               i (persistent! (reduce rf (transient {}) s))
               eq (assoc eq p i)]
           (set! (.-eq idx) eq)
@@ -415,11 +435,16 @@
     (or (get sorted p)
         (let [rf (fn [m id]
                    (let [ival (-property p id)]
-                     (assoc m ival (conj (get m ival #{}) id))))
+                     (assoc m ival (assoc (get m ival {}) id id))))
               i (reduce rf (sorted-map) s)
               srt (assoc sorted p i)]
           (set! (.-sorted idx) srt)
           i)))
+
+  IObj
+  (withMeta [this meta] (IndexedPersistentSet. (.withMeta ^IObj s meta) eq uniq sorted))
+  IMeta
+  (meta [this] (.meta ^IMeta s))
   Collection
   IHashEq
   (hasheq [this] (.hasheq ^IHashEq s))
@@ -527,8 +552,9 @@
   Property
   (-property [this element] (boolean (-property p element))))
 
+
 (defn group
-  "Returns an (unordered) seq of items where (p element) equals v.
+  "Returns an (unordered) vector of items where (p element) equals v.
 
   p is a function, but it is expected that you use functions with equality semantics.
 
@@ -536,8 +562,10 @@
   ([idx p] (group idx (->Truthiness p) true))
   ([idx p v]
    (let [i (-get-eq idx p)
-         set (get i v)]
-     (map idx set))))
+         m (get i v)
+         a (object-array (count m))]
+     (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
+     (LazilyPersistentVector/create a))))
 
 (defn identify
   "Returns the unique element where (-property p element) equals v.
@@ -558,9 +586,11 @@
   [idx p test v]
   (let [i (-get-sorted idx p)]
     (if (some? i)
-      (->> (subseq i test v)
-           (mapcat val)
-           (map idx))
+      (let [alist (ArrayList. 16)
+            add-map (fn [_ id _] (.add alist (idx id)))]
+        (->> (subseq i test v)
+             (reduce (fn [e] (reduce-kv add-map nil (val e)))))
+        (LazilyPersistentVector/createOwning (.toArray alist)))
       ())))
 
 (defn descending
@@ -572,9 +602,11 @@
   [idx p test v]
   (let [i (-get-sorted idx p)]
     (if (some? i)
-      (->> (rsubseq i test v)
-           (mapcat val)
-           (map idx))
+      (let [alist (ArrayList. 16)
+            add-map (fn [_ id _] (.add alist (idx id)))]
+        (->> (rsubseq i test v)
+             (reduce (fn [e] (reduce-kv add-map nil (val e)))))
+        (LazilyPersistentVector/createOwning (.toArray alist)))
       ())))
 
 (extend-protocol Property
