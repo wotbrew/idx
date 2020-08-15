@@ -1,6 +1,6 @@
 (ns com.wotbrew.idx
   (:require [clojure.walk :as walk])
-  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector)
+  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector IKVReduce IReduce IReduceInit)
            (java.util Map$Entry Map List Set Collection RandomAccess ArrayList)))
 
 (set! *warn-on-reflection* true)
@@ -265,7 +265,9 @@
   Callable
   (call [this] (throw (ArityException. 0 "IndexedPersistentMap")))
   Runnable
-  (run [this] (throw (ArityException. 0 "IndexedPersistentMap"))))
+  (run [this] (throw (ArityException. 0 "IndexedPersistentMap")))
+  IKVReduce
+  (kvreduce [this f init] (reduce-kv f init m)))
 
 (deftype IndexedPersistentVector
   [v
@@ -404,7 +406,11 @@
   Callable
   (call [this] (throw (ArityException. 0 "IndexedPersistentVector")))
   Runnable
-  (run [this] (throw (ArityException. 0 "IndexedPersistentVector"))))
+  (run [this] (throw (ArityException. 0 "IndexedPersistentVector")))
+  IReduceInit
+  (reduce [this f init] (reduce f init v))
+  IKVReduce
+  (kvreduce [this f init] (reduce-kv f init v)))
 
 (deftype IndexedPersistentSet
   [s
