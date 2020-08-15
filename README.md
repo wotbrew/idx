@@ -9,7 +9,14 @@ alternative fast access paths to their elements.
 - Index elements on demand by any property, such as: **functions** `(f element)`, **keys** `(get element k)` **paths** `(get-in element ks)` and anything satisfying the Property protocol. See [reference](#built-in-properties)
 - Indexes are cached transparently and reused for subsequent queries
 - Indexes are maintained incrementally through `conj`, `assoc` and so on once cached.
-  
+
+## Caveats
+
+- No ClojureScript support, Clojure only for now. (pull requests welcome!)
+- If you are only querying once, it is always faster to just use sequence functions than build indexes.
+- For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
+- If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
+
 ## Usage
 
 First include the artifact ```[com.wotbrew/idx "1.0.0"]``` or in deps `{com.wotbrew/idx {:mvn/version "1.0.0"}}`
