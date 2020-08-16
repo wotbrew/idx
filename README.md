@@ -95,7 +95,7 @@ Functions implement Property, they are not looked up as keys, but rather applied
 #### Built-in Properties
 
 - functions
-- paths with `(path ks)` for `(get-in element ks)`
+- nested paths with `(path prop1 prop2 ...)`.
 - any other object is looked up with `(get element o)`
 - escape functions to `(get element o)` with `(as-key o)`
 
@@ -108,7 +108,7 @@ This works well for existence checks, and function predicates. Therefore you can
 
 #### Built-in Predicates
 
-- compose predicates into a match with `(match m)`, this can be used to form composite indexes over many properties.
+- compose predicates into a match with `(match prop1 val prop2 val)`, this can be used to form composite indexes over many properties.
 - any other object is a truthyness test by applying at as a property.
 
 ## License
