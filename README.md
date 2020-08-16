@@ -90,7 +90,7 @@ a couple of properties together for joins.
 
 #### `pred`
 
-`pred` allows you to place truthyness/falseyness tests in the value position of matches.
+`pred` allows you to place truthyness/falseyness tests in the value position(s) of `match`, `group` and `identify` calls.
 
 `(match :foo (pred even?))`
 
