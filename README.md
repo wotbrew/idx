@@ -84,7 +84,7 @@ a couple of properties together for joins.
 
 ```clojure
 (group orders (match (path :user :id) 32444,
-                     :carrier (match :id 30)
+                     :carrier (match :country "uk" :available true)
                      :delivery-date #"2020-08-17"))
 ```
 
