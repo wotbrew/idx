@@ -33,6 +33,8 @@ If you pass in an already indexed collection, it is returned as is.
 
 ### Query your collection 
 
+Once wrapped with idx, a small suite of functions is available to query your collection.
+
 ```clojure
 
 (def coll (idx [{:foo 42, :id 1, :counter 453}, {:foo 42, :id 0, :counter 23}, {:foo 43, :id 2, :counter 43}]))
@@ -49,7 +51,7 @@ If you pass in an already indexed collection, it is returned as is.
 ;; => 
 (0,2,4 ...)
 
-;; 2-ary form for truthyness index
+;; 2-ary form for predicate check
 (group coll2 even?)
 ;; =>
 (0,2,4 ...)
@@ -83,13 +85,31 @@ with `(unwrap coll)`.
 
 ## Reference
 
-### Built-in Properties
+### Properties 
+
+`idx` indexes elements against 'properties', which are objects implementing the Property protocol. By default
+an object used as a property is looked up as a key in the element. Which works well for the common use case of querying by key.
+
+Functions implement Property, they are not looked up as keys, but rather applied to the element. 
+
+#### Built-in Properties
 
 - functions
 - paths with `(path ks)` for `(get-in element ks)`
-- key selections with `(select ks)` for `(select-keys ks)`
 - any other object is looked up with `(get element o)`
 - escape functions to `(get element o)` with `(as-key o)`
+
+### Predicates
+
+As well as supplying properties and values directly to `group` and `identify` you can omit the value and instead apply a Predicate.
+
+A predicate is an object implementing the Predicate protocol. By default, objects applied as predicates are used as a property, whose truthyness is indexed.
+This works well for existence checks, and function predicates. Therefore you can say `(group coll even?)`
+
+#### Built-in Predicates
+
+- compose predicates into a match with `(match m)`, this can be used to form composite indexes over many properties.
+- any other object is a truthyness test by applying at as a property.
 
 ## License
 

@@ -79,3 +79,12 @@
       (is (= 4 (identify m2 (prop #(+ % 2)) 6)))
 
       (is (= (sort (filter even? (vals (dissoc m 99)))) (sort (group (dissoc m2 99) even?)))))))
+
+(deftest path-test
+  (let [v (idx [{:foo {:bar 42}} {:foo {:bar 43}}])]
+    (is (= {:foo {:bar 42}} (identify v (path :foo :bar) 42)))
+    (is (= [{:foo {:bar 43}}] (group v (path :foo :bar) 43)))))
+
+(deftest match-test
+  (let [v (idx [{:foo 42,:bar 43, :baz 45} {:foo 46, :bar 47, :baz 48}])]
+    (is (= {:foo 42,:bar 43, :baz 45} (identify v (match {:foo 42, :bar 43}))))))

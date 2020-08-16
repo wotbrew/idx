@@ -8,6 +8,10 @@
 (defprotocol Property
   (-property [this element]))
 
+(defprotocol Predicate
+  (-prop [this])
+  (-val [this]))
+
 (defprotocol Idx
   "You should consider this protocol an implementation detail for now."
   (-get-uniq [idx p])
@@ -559,6 +563,10 @@
   Property
   (-property [this element] (boolean (-property p element))))
 
+(extend-protocol Predicate
+  Object
+  (-prop [this] (->Truthiness this))
+  (-val [this] true))
 
 (defn group
   "Returns an (unordered) vector of items where (p element) equals v.
@@ -566,7 +574,7 @@
   p is a function, but it is expected that you use functions with equality semantics.
 
   The 2-ary form finds all elements where (p element) returns truthy."
-  ([idx p] (group idx (->Truthiness p) true))
+  ([idx p] (group idx (-prop p) (-val p)))
   ([idx p v]
    (let [i (-get-eq idx p)
          m (get i v {})
@@ -578,11 +586,12 @@
   "Returns the unique element where (-property p element) equals v.
 
   p is a function, but it is expected that you use functions with equality semantics."
-  [idx p v]
-  (let [i (-get-uniq idx p)
-        id (get i v)]
-    (when (some? id)
-      (idx id))))
+  ([idx p] (identify idx (-prop p) (-val p)))
+  ([idx p v]
+   (let [i (-get-uniq idx p)
+         id (get i v)]
+     (when (some? id)
+       (idx id)))))
 
 (defn ascending
   "Returns an ascending order seq of elements where (test (-property p element) v) returns true.
@@ -684,14 +693,19 @@
 
 (defn path
   "Returns a property that will (get-in element k) for its value."
-  [ks]
-  (->Path ks))
+  [& ks]
+  (->Path (vec ks)))
 
-(defrecord Selection [ks]
+(defrecord Match [m]
   Property
-  (-property [this element] (select-keys element ks)))
+  (-property [this element]
+    (reduce-kv (fn [m p _] (assoc m p (-property p element))) {} m))
+  Predicate
+  (-prop [this] this)
+  (-val [this] m))
 
-(defn select
-  "Returns a property that will (select-keys element k) for its value."
-  [ks]
-  (->Selection (set ks)))
+(defn match
+  "Takes a map of {property value}, if each property value pair matches, the element
+  is returned."
+  [m]
+  (->Match m))
