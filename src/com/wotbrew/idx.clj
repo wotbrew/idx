@@ -1,6 +1,6 @@
 (ns com.wotbrew.idx
   (:require [clojure.walk :as walk])
-  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector IKVReduce IReduce IReduceInit)
+  (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector IKVReduce IReduce IReduceInit PersistentArrayMap)
            (java.util Map$Entry Map List Set Collection RandomAccess ArrayList)))
 
 (set! *warn-on-reflection* true)
@@ -687,14 +687,28 @@
   [k]
   (->AsKey k))
 
-(defrecord Path [ks]
+(defrecord Path2 [a b]
   Property
-  (-property [this element] (get-in element ks)))
+  (-property [this element] (-> element (-property a) (-property b))))
+
+(defrecord Path3 [a b c]
+  Property
+  (-property [this element] (-> element (-property a) (-property b) (-property c))))
+
+(defrecord Path [ps]
+  Property
+  (-property [this element]
+    (reduce
+      (fn [v p] (-property p v))
+      element
+      ps)))
 
 (defn path
-  "Returns a property that will (get-in element k) for its value."
-  [& ks]
-  (->Path (vec ks)))
+  "Returns a property that will drill down to some nested value by using the properties in the list. Think get-in."
+  ([p] p)
+  ([p1 p2] (->Path2 p1 p2))
+  ([p1 p2 p3] (->Path3 p1 p2 p3))
+  ([p1 p2 p3 p4 & more] (->Path (reduce conj [p1 p2 p3 p4] more))))
 
 (defrecord Match [m]
   Property
@@ -704,8 +718,63 @@
   (-prop [this] this)
   (-val [this] m))
 
+(defrecord Match1 [p v]
+  Property
+  (-property [this element] (-property p element))
+  Predicate
+  (-prop [this] this)
+  (-val [this] v))
+
+(defrecord Match2 [p1 p2 valmap]
+  Property
+  (-property [this element]
+    (let [arr (object-array 4)]
+      (aset arr 0 p1)
+      (aset arr 1 (-property p1 element))
+      (aset arr 2 p2)
+      (aset arr 3 (-property p2 element))
+      (PersistentArrayMap/createAsIfByAssoc arr)))
+  Predicate
+  (-prop [this] this)
+  (-val [this] valmap))
+
+(defrecord Match3 [p1 p2 p3 valmap]
+  Property
+  (-property [this element]
+    (let [arr (object-array 6)]
+      (aset arr 0 p1)
+      (aset arr 1 (-property p1 element))
+      (aset arr 2 p2)
+      (aset arr 3 (-property p2 element))
+      (aset arr 4 p3)
+      (aset arr 5 (-property p3 element))
+      (PersistentArrayMap/createAsIfByAssoc arr)))
+  Predicate
+  (-prop [this] this)
+  (-val [this] valmap))
+
+
 (defn match
   "Takes a map of {property value}, if each property value pair matches, the element
   is returned."
-  [m]
-  (->Match m))
+  ([p v] (->Match1 p v))
+  ([p1 v1 p2 v2]
+   (->> (PersistentArrayMap/createAsIfByAssoc
+          (doto (object-array 4)
+            (aset 0 p1) (aset 1 v1)
+            (aset 2 p2) (aset 3 v2)))
+        (->Match2 p1 p2)))
+  ([p1 v1 p2 v2 p3 v3]
+   (->> (PersistentArrayMap/createAsIfByAssoc
+          (doto (object-array 6)
+            (aset 0 p1) (aset 1 v1)
+            (aset 2 p2) (aset 3 v2)
+            (aset 4 p3) (aset 5 v3)))
+        (->Match3 p1 p2 p3)))
+  ([p1 v1 p2 v2 p3 v3 & more]
+   (->Match
+     (loop [m (array-map p1 v1 p2 v2 p3 v3)
+            more more]
+       (if-some [[prop val & tail] (seq more)]
+         (recur (assoc m prop val) tail)
+         m)))))
