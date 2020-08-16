@@ -29,7 +29,9 @@ All functions are available in the `com.wotbrew.idx` namespace.
 
 This is very cheap, returns a new collection matching the type of the input. Implementations are provided for vectors, maps and sets.
 
-If you pass in an already indexed collection, it is returned as is.
+If you pass in an already indexed collection, it is returned as is. 
+
+It will behave like a normal data vector/map/set and you can use standard modification functions.
 
 ### Query your collection 
 
@@ -37,7 +39,9 @@ Once wrapped with idx, a small suite of functions is available to query your col
 
 #### `group`
 
-Group returns vectors of elements. You pass a predicate or property to test and value to match.
+Establishes a one-to-many hash index.
+
+Returns vectors of elements. You pass a predicate or property to test and value to match.
 
 Say you have a vector of users, each with an age key, you might do:
 
@@ -49,12 +53,16 @@ Say you have a vector of numbers, and you want to find the negative ones, functi
 
 #### `identify`
 
-Identify operates on unique properties and predicates. It establishes a one-to-one index, that will throw 
+Establishes a one-to-one hash index
+
+`identify` operates on unique properties and predicates. It will throw 
 if the property is non unique. Good for by-id type queries.
 
 `(identify users :id 32344)`
 
 #### `ascending`, `descending`
+
+Establishes a one-to-many sorted index.
 
 #### `path`
 
@@ -71,12 +79,12 @@ are indexing a get-in call.
 
 They keys can be any property, and match nests.
 
-This allows for some pretty extensitve (and expensive!) indexes, but is useful to compose 
+This allows for some pretty extensive (and expensive!) indexes, but is useful to compose 
 a couple of properties together for joins.
 
 ```clojure
 (group orders (match (path :user :id) 32444,
-                     :carrier (match :id 30, true)
+                     :carrier (match :id 30)
                      :delivery-date #"2020-08-17"))
 ```
 
