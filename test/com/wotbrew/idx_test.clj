@@ -89,5 +89,7 @@
   (let [v (idx [{:foo 42,:bar 43, :baz 45} {:foo 46, :bar 47, :baz 48}])]
     (is (= {:foo 42,:bar 43, :baz 45} (identify v (match :foo 42, :bar 43))))
     (is (= {:foo 42,:bar 43, :baz 45} (identify v (match :foo 42))))
+    (is (= {:foo 42,:bar 43, :baz 45} (identify v (match :foo (pred even?) :bar 43))))
+    (is (= {:foo 42,:bar 43, :baz 45} (identify v (match :foo (match number? true odd? false) :bar 43))))
     (is (= {:foo 42, :bar 43 :baz 45} (identify v (match :foo 42, :baz 45, :bar 43))))
     (is (nil? (identify v (match :foo -1))))))

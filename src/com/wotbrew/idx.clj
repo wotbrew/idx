@@ -559,14 +559,53 @@
   [coll]
   (-unwrap coll))
 
-(defrecord Truthiness [p]
+(defrecord Comp [p1 p2]
   Property
-  (-property [this element] (boolean (-property p element))))
+  (-property [this element] (-property p1 (-property p2 element))))
+
+(defn pcomp
+  "Like clojure.core/comp but on properties."
+  [p1 p2]
+  (->Comp p1 p2))
 
 (extend-protocol Predicate
   Object
-  (-prop [this] (->Truthiness this))
+  (-prop [this] (->Comp boolean this))
   (-val [this] true))
+
+(defrecord Select [ps]
+  Property
+  (-property [this element]
+    (reduce (fn [m p] (assoc m p (-property p element))) {} ps)))
+
+(defrecord Pred [p v]
+  Predicate
+  (-prop [this] p)
+  (-val [this] v))
+
+(defn pred
+  "Can be used in matches to nest truthy/falsey predicates.
+
+  When you want to test truthyness (pred p) or (pred p true), if you want to test falseyness (pred p false)."
+  ([p] (->Pred (pcomp boolean p) true))
+  ([p v] (->Pred (pcomp boolean p) v)))
+
+(defn- build-match-map
+  [m p v]
+  (if (instance? Pred v)
+    (build-match-map m (pcomp (-prop v) p) (-val v))
+    (assoc m p v)))
+
+(defn match
+  "Takes a map of {property value}, if each property value pair matches, the element
+  is returned. If value is itself a match then it will be nested."
+  [p v & more]
+  (let [m (loop [m (build-match-map {} p v)
+                 more more]
+            (if-some [[prop val & tail] (seq more)]
+              (recur (build-match-map m prop val) tail)
+              m))]
+    (->Pred (->Select (set (keys m))) m)))
 
 (defn group
   "Returns an (unordered) vector of items where (p element) equals v.
@@ -576,11 +615,13 @@
   The 2-ary form finds all elements where (p element) returns truthy."
   ([idx p] (group idx (-prop p) (-val p)))
   ([idx p v]
-   (let [i (-get-eq idx p)
-         m (get i v {})
-         a (object-array (count m))]
-     (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
-     (LazilyPersistentVector/createOwning a))))
+   (if (instance? Pred v)
+     (group idx (pcomp (-prop v) p) (-val v))
+     (let [i (-get-eq idx p)
+           m (get i v {})
+           a (object-array (count m))]
+       (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
+       (LazilyPersistentVector/createOwning a)))))
 
 (defn identify
   "Returns the unique element where (-property p element) equals v.
@@ -588,10 +629,12 @@
   p is a function, but it is expected that you use functions with equality semantics."
   ([idx p] (identify idx (-prop p) (-val p)))
   ([idx p v]
-   (let [i (-get-uniq idx p)
-         id (get i v)]
-     (when (some? id)
-       (idx id)))))
+   (if (instance? Pred v)
+     (identify idx (pcomp (-prop v) p) (-val v))
+     (let [i (-get-uniq idx p)
+           id (get i v)]
+       (when (some? id)
+         (idx id))))))
 
 (defn ascending
   "Returns an ascending order seq of elements where (test (-property p element) v) returns true.
@@ -637,47 +680,6 @@
   nil
   (-property [this element] (get element nil)))
 
-(deftype Prop [form f]
-  Property
-  (-property [this element] (f element))
-  Object
-  (equals [this obj] (and (instance? Prop obj) (= form (.-form ^Prop obj))))
-  (hashCode [this] (.hashCode form)))
-
-(defn- ->sym
-  [x]
-  (if (var? x)
-    (let [^Var v x]
-      (symbol (str (.name (.ns v))) (str (.sym v))))
-    x))
-
-(defn- unfn [expr]
-  (if (and (seq? expr)
-           (symbol? (first expr))
-           (= "fn*" (name (first expr))))
-    (let [[[s] & form] (rest expr)]
-      (conj (walk/postwalk-replace {s '%} form) '[%] 'fn))
-    expr))
-
-(defn- res [form]
-  (cond
-    (keyword? form) form
-    (symbol? form) (or (-> form resolve ->sym) form)
-    (sequential? form) (walk/postwalk #(if (symbol? %) (res %) %) (unfn form))
-    :else form))
-
-(defmacro prop
-  "Returns a property for the function form, gives it equality based on the form.
-
-  The function MUST be pure, otherwise indexes WILL misbehave over time.
-
-  Equality is defined as form equality."
-  [form]
-  (cond
-    (keyword? form) form
-    (var? form) form
-    :else `(->Prop '~(res form) ~form)))
-
 (defrecord AsKey [k]
   Property
   (-property [this element] (get element k)))
@@ -709,72 +711,3 @@
   ([p1 p2] (->Path2 p1 p2))
   ([p1 p2 p3] (->Path3 p1 p2 p3))
   ([p1 p2 p3 p4 & more] (->Path (reduce conj [p1 p2 p3 p4] more))))
-
-(defrecord Match [m]
-  Property
-  (-property [this element]
-    (reduce-kv (fn [m p _] (assoc m p (-property p element))) {} m))
-  Predicate
-  (-prop [this] this)
-  (-val [this] m))
-
-(defrecord Match1 [p v]
-  Property
-  (-property [this element] (-property p element))
-  Predicate
-  (-prop [this] this)
-  (-val [this] v))
-
-(defrecord Match2 [p1 p2 valmap]
-  Property
-  (-property [this element]
-    (let [arr (object-array 4)]
-      (aset arr 0 p1)
-      (aset arr 1 (-property p1 element))
-      (aset arr 2 p2)
-      (aset arr 3 (-property p2 element))
-      (PersistentArrayMap/createAsIfByAssoc arr)))
-  Predicate
-  (-prop [this] this)
-  (-val [this] valmap))
-
-(defrecord Match3 [p1 p2 p3 valmap]
-  Property
-  (-property [this element]
-    (let [arr (object-array 6)]
-      (aset arr 0 p1)
-      (aset arr 1 (-property p1 element))
-      (aset arr 2 p2)
-      (aset arr 3 (-property p2 element))
-      (aset arr 4 p3)
-      (aset arr 5 (-property p3 element))
-      (PersistentArrayMap/createAsIfByAssoc arr)))
-  Predicate
-  (-prop [this] this)
-  (-val [this] valmap))
-
-
-(defn match
-  "Takes a map of {property value}, if each property value pair matches, the element
-  is returned."
-  ([p v] (->Match1 p v))
-  ([p1 v1 p2 v2]
-   (->> (PersistentArrayMap/createAsIfByAssoc
-          (doto (object-array 4)
-            (aset 0 p1) (aset 1 v1)
-            (aset 2 p2) (aset 3 v2)))
-        (->Match2 p1 p2)))
-  ([p1 v1 p2 v2 p3 v3]
-   (->> (PersistentArrayMap/createAsIfByAssoc
-          (doto (object-array 6)
-            (aset 0 p1) (aset 1 v1)
-            (aset 2 p2) (aset 3 v2)
-            (aset 4 p3) (aset 5 v3)))
-        (->Match3 p1 p2 p3)))
-  ([p1 v1 p2 v2 p3 v3 & more]
-   (->Match
-     (loop [m (array-map p1 v1 p2 v2 p3 v3)
-            more more]
-       (if-some [[prop val & tail] (seq more)]
-         (recur (assoc m prop val) tail)
-         m)))))

@@ -6,7 +6,7 @@ alternative fast access paths to their elements.
 ## Features
 
 - Wrappers for vectors, sets and maps.
-- Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#built-in-properties)
+- Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#properties)
 - Indexes are cached transparently and reused for subsequent queries
 - Indexes are maintained incrementally through `conj`, `assoc` and so on once cached.
 
@@ -34,6 +34,62 @@ If you pass in an already indexed collection, it is returned as is.
 ### Query your collection 
 
 Once wrapped with idx, a small suite of functions is available to query your collection.
+
+#### `group`
+
+Group returns vectors of elements. You pass a predicate or property to test and value to match.
+
+Say you have a vector of users, each with an age key, you might do:
+
+`(group users :age 10)` 
+
+Say you have a vector of numbers, and you want to find the negative ones, functions are both properties and predicates.
+
+`(group numbers neg? true)` or `(group coll neg?)`.
+
+#### `identify`
+
+Identify operates on unique properties and predicates. It establishes a one-to-one index, that will throw 
+if the property is non unique. Good for by-id type queries.
+
+`(identify users :id 32344)`
+
+#### `ascending`, `descending`
+
+#### `path`
+
+`path` allows nested indexes, use it for nested indexes as if you
+are indexing a get-in call.
+
+`(group orders (path :user :id) 32344)`
+
+#### `match`
+
+`match` composes properties to form composite indexes. 
+
+`(group numbers (match neg? true, even? true))`
+
+They keys can be any property, and match nests.
+
+This allows for some pretty extensitve (and expensive!) indexes, but is useful to compose 
+a couple of properties together for joins.
+
+```clojure
+(group orders (match (path :user :id) 32444,
+                     :carrier (match :id 30, true)
+                     :delivery-date #"2020-08-17"))
+```
+
+#### `pred`
+
+`pred` allows you to place truthyness/falseyness tests in the value position of matches.
+
+`(match :foo (pred even?))`
+
+#### `pcomp`
+
+`pcomp` allows for function style composition of properties.
+
 
 ```clojure
 
