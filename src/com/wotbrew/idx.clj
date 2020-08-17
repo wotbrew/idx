@@ -691,11 +691,11 @@
 
 (defrecord Path2 [a b]
   Property
-  (-property [this element] (-> element (-property a) (-property b))))
+  (-property [this element] (->> element (-property a) (-property b))))
 
 (defrecord Path3 [a b c]
   Property
-  (-property [this element] (-> element (-property a) (-property b) (-property c))))
+  (-property [this element] (->> element (-property a) (-property b) (-property c))))
 
 (defrecord Path [ps]
   Property
