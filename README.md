@@ -13,9 +13,10 @@ alternative fast access paths to their elements.
 ## Caveats
 
 - No ClojureScript support, Clojure only for now. (pull requests welcome!)
-- If you are only querying once, it is always faster to just use sequence functions than build indexes.
+- If you are only querying once or twice, it is almost always faster to just use sequence functions than build indexes.
 - For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
 - If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
+- Each index use memory proportional to the collection size. Its best not to throw lots of queries requiring distinct indexes at a single collection. Because of this it is best to use the wrapper only in closed situations where you account for all the queries made against it.
 
 ## Usage
 
