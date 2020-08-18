@@ -44,8 +44,8 @@
   (-get-index [coll p kind] nil)
   (-del-index [coll p kind] coll)
   (-add-index [coll p kind] (-> (-wrap coll false) (-add-index p kind)))
-  (-elements [coll p kind] coll)
-  (-id-element-pairs [coll] (map-indexed vector coll)))
+  (-elements [coll p kind] (-elements (-wrap coll false)))
+  (-id-element-pairs [coll] (-id-element-pairs (-wrap coll false))))
 
 (defn- create-eq-from-associative
   [m p]
