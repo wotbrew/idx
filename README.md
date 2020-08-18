@@ -24,7 +24,7 @@ All functions are available in the `com.wotbrew.idx` namespace.
 
 ### Manually index your collection
 
-```
+```clojure
 (idx coll)
 ;; or
 (idx coll p kind ...)
@@ -150,7 +150,9 @@ Replaces an element in the collection identified by the property/value or predic
 
 e.g 
 
-`(replace-by customers :email "foo@bar.com" new-customer)`
+```clojure 
+(replace-by customers :email "foo@bar.com" new-customer)
+```
 
 #### `unwrap`
 
@@ -160,9 +162,6 @@ with `(unwrap coll)`.
 #### `delete-index`
 
 Returns a new collection without the specified index(es).
-
-
-
 
 ## Reference
 
