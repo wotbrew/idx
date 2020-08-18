@@ -1,5 +1,7 @@
 # idx
 
+Idea which I wanted to explore. Lots of problems though so not sure if its got legs.
+
 This library provides clojure data structures (maps, sets and vectors) with on-demand secondary indexes. Providing 
 alternative fast access paths to their elements.
 
