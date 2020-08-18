@@ -86,25 +86,36 @@ Uses a one-to-one hash index if available.
 `identify` operates on unique properties and predicates. It will throw 
 if the property is non unique. Good for by-id type queries.
 
-`(identify users :id 32344)`
+```clojure 
+(identify users :id 32344)
+```
 
 #### `ascending`, `descending`
 
 Uses a one-to-many sorted index if available.
+
+```clojure
+(ascending users :created-at > #inst "2020-08-18") ;; ascending sort
+(descending users :created-at <= #inst "2020-08-18") ;; descending sort
+```
 
 #### `path`
 
 `path` allows nested indexes, use it for nested indexes as if you
 are indexing a get-in call.
 
-`(group orders (path :user :id) 32344)`
+```clojure
+(group orders (path :user :id) 32344)
+```
 
 #### `match`
 
 `match` composes properties to form composite indexes. `match` returns a Predicate implementation so
 you do not have to redundantly respecify the structure in the value position.
 
-`(group numbers (match neg? true, even? true))`
+```clojure
+(group numbers (match neg? true, even? true))
+```
 
 They keys can be any property, and match nests.
 
@@ -129,9 +140,16 @@ In order to index a match, either use an `auto-idx` coll or use the `:idx/value`
 
 `pred` creates a predicate that uses a truthy/falsey index. It can be used in the value position of matches.
 
-`(match :foo (pred even?))`
+```clojure
+(match :foo (pred even?))
+```
 
-`(group :foo (pred even?))`
+pred is also useful to promote a function so it can be used
+in the predicate position of `group` / `identify` / `replace-by`.
+
+```clojure
+(group :foo (pred even?))
+```
 
 #### `pcomp`
 
@@ -164,7 +182,11 @@ with `(unwrap coll)`.
 
 #### `delete-index`
 
-Returns a new collection without the specified index(es).
+Returns a new collection without the specified index(es), uses same index specification as [idx](#idx)
+
+```clojure 
+(delete-index coll :foo :idx/hash)
+```
 
 ## Reference
 
@@ -182,6 +204,12 @@ Functions implement Property, they are not looked up as keys, but rather applied
 - any other object is looked up with `(get element o)`
 - escape functions to `(get element o)` with `(as-key o)`
 
+#### Predicates 
+
+Several functions take predicates as arguments, a predicate composes a property with its expected value. This is how `match` works.
+
+You can lift any function into a truthy/falsey test with [pred](#pred).
+ 
 #### Mutability 
 
 - If you use `auto-idx` indexes are cached as you query using mutable fields. This is similar to how 
