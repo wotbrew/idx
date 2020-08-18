@@ -1,16 +1,14 @@
 # idx
 
-Idea which I wanted to explore. Lots of problems though so not sure if its got legs.
-
-This library provides clojure data structures (maps, sets and vectors) with on-demand secondary indexes. Providing 
+This library provides clojure data structures (maps, sets and vectors) that allow for secondary indexes. Providing 
 alternative fast access paths to their elements.
 
 ## Features
 
 - Wrappers for vectors, sets and maps.
 - Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#properties)
-- Indexes are cached transparently and reused for subsequent queries
-- Indexes are maintained incrementally through `conj`, `assoc` and so on once cached.
+- Can choose automatic indexing, where indexes are created and cached transparently as you query the collection.
+- Indexes are maintained incrementally through `conj`, `assoc` and so on.
 
 ## Caveats
 
@@ -18,23 +16,51 @@ alternative fast access paths to their elements.
 - If you are only querying once or twice, it is almost always faster to just use sequence functions than build indexes.
 - For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
 - If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
-- Each index use memory proportional to the collection size. Its best not to throw lots of queries requiring distinct indexes at a single collection. Because of this it is best to use the wrapper only in closed situations where you account for all the queries made against it.
+- Each index use memory proportional to the collection size. 
 
 ## Usage
 
 All functions are available in the `com.wotbrew.idx` namespace.
 
-### Wrap your collection
+### Manually index your collection
 
-```clojure 
+```
 (idx coll)
+;; or
+(idx coll p kind ...)
+
+e.g 
+
+(idx coll :id :idx/unique :name :idx/hash :created-at :idx/sort)
 ```
 
-This is very cheap, returns a new collection matching the type of the input. Implementations are provided for vectors, maps and sets.
+`idx` returns a new indexed collection with the specified indexes (plus any that already existed).
 
-If you pass in an already indexed collection, it is returned as is. 
+You can also later remove indexes with `delete-index`.
 
-It will behave like a normal data vector/map/set and you can use standard modification functions.
+Kind is either:
+
+`:idx/hash` for fash `group` calls
+`:idx/unique` for fast `identify` / `replace-by` calls.
+`:idx/sorted` for fast `ascending` / `descending` calls.
+
+The resulting indexing collection meets the interface of its (map/vector/set) input, if you add/associate/remove elements
+the indexes will be maintained on your behalf.
+
+### Automatically index your collection as it is queried.
+
+```clojure 
+(auto-idx coll)
+```
+
+This returns an indexed collection that creates indexes (and caches) them on demand as you query.
+
+This can be good in local contexts where you only want to specify indexes once where they are used.
+
+Caveats to this approach:
+
+- You could end up creating a lot of indexes, which slow down `conj`, `assoc`, `dissoc` and so on.
+- Redundant indexes take up memory, remember you can `delete-index`.
 
 ### Query your collection 
 
@@ -42,7 +68,7 @@ Once wrapped with idx, a small suite of functions is available to query your col
 
 #### `group`
 
-Establishes a one-to-many hash index.
+Uses a one-to-many hash index.
 
 Returns vectors of elements. You pass a predicate or property to test and value to match.
 
@@ -56,7 +82,7 @@ Say you have a vector of numbers, and you want to find the negative ones, functi
 
 #### `identify`
 
-Establishes a one-to-one hash index
+Uses a one-to-one hash index
 
 `identify` operates on unique properties and predicates. It will throw 
 if the property is non unique. Good for by-id type queries.
@@ -65,7 +91,7 @@ if the property is non unique. Good for by-id type queries.
 
 #### `ascending`, `descending`
 
-Establishes a one-to-many sorted index.
+Uses a one-to-many sorted index.
 
 #### `path`
 
@@ -91,6 +117,14 @@ a couple of properties together for joins.
                      :delivery-date #"2020-08-17"))
 ```
 
+In order to index a match, either use an `auto-idx` coll or use the `:idx/value` placeholder.
+
+```clojure
+(idx coll (match (path :user :id) :idx/value,
+                 :carrier (match :country :idx/value :available :idx/value)
+                 :delivery-date :idx/value))
+```
+
 #### `pred`
 
 `pred` allows you to place truthyness/falseyness tests in the value position(s) of `match`, `group` and `identify` calls.
@@ -101,54 +135,33 @@ a couple of properties together for joins.
 
 `pcomp` allows for function style composition of properties.
 
-
-```clojure
-
-(def coll (idx [{:foo 42, :id 1, :counter 453}, {:foo 42, :id 0, :counter 23}, {:foo 43, :id 2, :counter 43}]))
-(def coll2 (idx (vec (range 100))))
-
-;; one-to-many hash indexes, such as what you would get from (group-by). 
-;; Unlike group-by the resulting sequences are unordered.
-(group coll :foo 42)
-;; =>
-({:foo 42, :id 0, :counter 23}, {:foo 42, :id 1, :counter 453})
-
-;; can query by a function (careful of equality)
-(group coll2 even? true) 
-;; => 
-(0,2,4 ...)
-
-;; 2-ary form for predicate check
-(group coll2 even?)
-;; =>
-(0,2,4 ...)
-
-;; one-to-one hash indexes for unique elements, cheaper than group when you have exactly one element for each value of the property.
-(identify coll :id 0) 
-;; => 
-{:foo 42, :id 0, :counter 23}
-
-;; sorted indexes 
-(ascending coll :counter > 42) ;; all elements where (:counter element) > 42 in ascending order
-;; => 
-({:foo 43, :id 2, :counter 43}, {:foo 42, :id 1, :counter 453})
-
-(descending coll :counter < 42) ;; all elements where (:counter element) < 42 in descending order
-;; =>
-({:foo 42, :id 0, :counter 23})
-```
-
-Using a query function will construct and then cache the index needed to satisfy the query. The indexes are cached
-against the collection instance, much like hash codes in clojure.
-
 ### Modify your collection
 
-Any indexes cached against your collection will be maintained incrementally with new versions of the data structure.
+Any indexes (automatic or otherwise) against your collection will be maintained incrementally with new versions of the data structure.
 
 Use normal clojure collection functions such as `conj`, `assoc`, `dissoc`, `disj` and `into`. 
 
-As maintaining indexes can become expensive if you want to make a lot of modifications, you can unwrap the indexed structure
+Some handy functions are enabled due to the presence of indexes.
+
+#### `replace-by`
+
+Replaces an element in the collection identified by the property/value or predicate.
+
+e.g 
+
+`(replace-by customers :email "foo@bar.com" new-customer)`
+
+#### `unwrap`
+
+As maintaining indexes can become expensive if you want to make a lot of modifications, you can completely remove any indexing
 with `(unwrap coll)`.
+
+#### `delete-index`
+
+Returns a new collection without the specified index(es).
+
+
+
 
 ## Reference
 

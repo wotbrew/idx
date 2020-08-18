@@ -1,22 +1,93 @@
 (ns com.wotbrew.idx
-  (:require [clojure.walk :as walk])
   (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector IKVReduce IReduce IReduceInit PersistentArrayMap)
            (java.util Map$Entry Map List Set Collection RandomAccess ArrayList)))
 
 (set! *warn-on-reflection* true)
 
 (defprotocol Property
+  "You should consider this protocol an implementation detail for now."
   (-property [this element]))
 
 (defprotocol Predicate
+  "You should consider this protocol an implementation detail for now."
   (-prop [this])
   (-val [this]))
 
 (defprotocol Idx
   "You should consider this protocol an implementation detail for now."
-  (-get-uniq [idx p])
-  (-get-eq [idx p])
-  (-get-sorted [idx p]))
+  (-rewrap [idx auto])
+  (-get-index [idx p kind])
+  (-del-index [idx p kind])
+  (-add-index [idx p kind])
+  (-elements [idx])
+  (-id-element-pairs [idx]))
+
+(defprotocol Wrap
+  "You should consider this protocol an implementation detail for now."
+  (-wrap [coll auto]))
+
+(defprotocol Unwrap
+  "You should consider this protocol an implementation detail for now."
+  (-unwrap [coll]))
+
+(extend-protocol
+  Idx
+  nil
+  (-rewrap [coll auto] nil)
+  (-get-index [coll p kind] nil)
+  (-del-index [coll p kind] nil)
+  (-add-index [coll p kind] (-> (-wrap coll false) (-add-index p kind)))
+  (-elements [coll] nil)
+  (-id-element-pairs [coll] nil)
+  Object
+  (-rewrap [coll auto] coll)
+  (-get-index [coll p kind] nil)
+  (-del-index [coll p kind] coll)
+  (-add-index [coll p kind] (-> (-wrap coll false) (-add-index p kind)))
+  (-elements [coll p kind] coll)
+  (-id-element-pairs [coll] (map-indexed vector coll)))
+
+(defn- create-eq-from-associative
+  [m p]
+  (let [rf (fn [m id v]
+             (let [ival (-property p v)]
+               (assoc! m ival (assoc (get m ival {}) id id))))]
+    (persistent! (reduce-kv rf (transient {}) m))))
+
+(defn- create-eq-from-elements
+  [elements p]
+  (let [rf (fn [m v]
+             (let [ival (-property p v)]
+               (assoc! m ival (assoc (get m ival {}) v v))))]
+    (persistent! (reduce rf (transient {}) elements))))
+
+(defn- create-uniq-from-associative
+  [m p]
+  (let [rf (fn [m id v]
+             (let [ival (-property p v)]
+               (assoc! m ival id)))]
+    (persistent! (reduce-kv rf (transient {}) m))))
+
+(defn- create-unique-from-elements
+  [elements p]
+  (let [rf (fn [m v]
+             (let [ival (-property p v)]
+               (assoc! m ival v)))]
+    (persistent! (reduce rf (transient {}) elements))))
+
+(defn- create-sorted-from-associative
+  [m p]
+  (let [rf (fn [m id v]
+             (let [ival (-property p v)]
+               (assoc m ival (assoc (get m ival {}) id id))))]
+    (reduce-kv rf (sorted-map) m)))
+
+(defn- create-sorted-from-elements
+  [elements p]
+  (let [rf (fn [m v]
+             (let [ival (-property p v)]
+               (assoc m ival (assoc (get m ival {}) v v))))]
+    (reduce rf (sorted-map) elements)))
 
 ;; for eq/sorted leaves we use maps rather than sets so
 ;; we get the PersistentArrayMap optimisation when small.
@@ -77,8 +148,10 @@
      (fn [unq p i]
        (let [ov (-property p old-element)
              v (-property p element)]
-         (if (identical? ov v)
-           unq
+         (cond
+           (and (identical? id (i v)) (identical? ov v)) unq
+           (identical? ov v) (assoc unq p (assoc i v id))
+           :else
            (let [i (dissoc i ov)
                  i (assoc i v id)]
              (assoc unq p i)))))
@@ -142,37 +215,65 @@
   [m
    ^:unsynchronized-mutable eq
    ^:unsynchronized-mutable uniq
-   ^:unsynchronized-mutable sorted]
+   ^:unsynchronized-mutable sorted
+   ^boolean auto]
   Idx
-  (-get-eq [idx p]
-    (or (get eq p)
-        (let [rf (fn [m id v]
-                   (let [ival (-property p v)]
-                     (assoc! m ival (assoc (get m ival {}) id id))))
-              i (persistent! (reduce-kv rf (transient {}) m))
-              eq (assoc eq p i)]
-          (set! (.-eq idx) eq)
-          i)))
-  (-get-uniq [idx p]
-    (or (get uniq p)
-        (let [rf (fn [m id v]
-                   (let [ival (-property p v)]
-                     (assert (not (contains? m ival)))
-                     (assoc! m ival id)))
-              i (persistent! (reduce-kv rf (transient {}) m))
-              uniq (assoc uniq p i)]
-          (set! (.-uniq idx) uniq)
-          i)))
-  (-get-sorted [idx p]
-    (or (get sorted p)
-        (let [rf (fn [m id v]
-                   (let [ival (-property p v)]
-                     (assoc m ival (assoc (get m ival {}) id id))))
-              i (reduce-kv rf (sorted-map) m)
-              srt (assoc sorted p i)]
-          (set! (.-sorted idx) srt)
-          i)))
+  (-rewrap [idx auto] (IndexedPersistentMap. m eq uniq sorted auto))
+  (-get-index [idx p kind]
+    (case kind
+      :idx/hash
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-eq-from-associative m p)
+                eq (assoc eq p i)]
+            (set! (.-eq idx) eq)
+            i))
 
+      :idx/unique
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-uniq-from-associative m p)
+                uniq (assoc uniq p i)]
+            (set! (.-uniq idx) uniq)
+            i))
+
+      :idx/sort
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-sorted-from-associative m p)
+                sorted (assoc eq p i)]
+            (set! (.-sorted idx) sorted)
+            i))))
+  (-add-index [idx p kind]
+    (case kind
+      :idx/hash
+      (if (get eq p)
+        idx
+        (IndexedPersistentMap. m (assoc eq p (create-eq-from-associative m p)) uniq sorted auto))
+      :idx/unique
+      (if (get uniq p)
+        idx
+        (IndexedPersistentMap. m eq (assoc uniq p (create-uniq-from-associative m p)) sorted auto))
+      :idx/sort
+      (if (get sorted p)
+        idx
+        (IndexedPersistentMap. m eq uniq (assoc sorted p (create-sorted-from-associative m p)) auto))))
+  (-del-index [idx p kind]
+    (case kind
+      :idx/hash
+      (if (get eq p)
+        (IndexedPersistentMap. m (dissoc eq p) uniq sorted auto)
+        idx)
+      :idx/unique
+      (if (get uniq p)
+        (IndexedPersistentMap. m eq (dissoc uniq p) sorted auto)
+        idx)
+      :idx/sort
+      (if (get sorted p)
+        (IndexedPersistentMap. m eq uniq (dissoc sorted p) auto)
+        idx)))
+  (-elements [idx] (vals m))
+  (-id-element-pairs [idx] (map (juxt key val) m))
   Map
   (size [this] (.size ^Map m))
   (isEmpty [this] (.isEmpty ^Map m))
@@ -189,7 +290,7 @@
   IMeta
   (meta [this] (.meta ^IMeta m))
   IObj
-  (withMeta [this mta] (IndexedPersistentMap. (.withMeta ^IObj m mta) eq uniq sorted))
+  (withMeta [this mta] (IndexedPersistentMap. (.withMeta ^IObj m mta) eq uniq sorted auto))
 
   MapEquivalence
   IHashEq
@@ -210,14 +311,16 @@
           (.assoc ^IPersistentMap m o o1)
           (some-> eq (add-eq o o1))
           (some-> uniq (add-uniq o o1))
-          (some-> sorted (add-sorted o o1)))
+          (some-> sorted (add-sorted o o1))
+          auto)
 
         :else
         (IndexedPersistentMap.
           (.assoc ^IPersistentMap m o o1)
           (some-> eq (add-eq o old-element o1))
           (some-> uniq (add-uniq o old-element o1))
-          (some-> sorted (add-sorted o old-element o1))))))
+          (some-> sorted (add-sorted o old-element o1))
+          auto))))
   (assocEx [this o o1]
     (if (contains? m o)
       (throw (Exception. "Key already present"))
@@ -230,7 +333,8 @@
           (.without ^IPersistentMap m o)
           (some-> eq (del-eq o old-element))
           (some-> uniq (del-uniq old-element))
-          (some-> sorted (del-sorted o old-element))))))
+          (some-> sorted (del-sorted o old-element))
+          auto))))
   Counted
   Iterable
   (iterator [this] (.iterator ^Iterable m))
@@ -254,7 +358,7 @@
           (.assoc this (.getKey e) (.getKey e)))
         this
         o)))
-  (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) nil nil nil))
+  (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) nil nil nil auto))
   (equiv [this o] (.equiv ^IPersistentCollection m o))
   ILookup
   (valAt [this o] (.valAt ^ILookup m o))
@@ -277,36 +381,65 @@
   [v
    ^:unsynchronized-mutable eq
    ^:unsynchronized-mutable uniq
-   ^:unsynchronized-mutable sorted]
+   ^:unsynchronized-mutable sorted
+   ^boolean auto]
   Idx
-  (-get-eq [idx p]
-    (or (get eq p)
-        (let [rf (fn [m id v]
-                   (let [ival (-property p v)]
-                     (assoc! m ival (assoc (get m ival {}) id id))))
-              i (persistent! (reduce-kv rf (transient {}) v))
-              eq (assoc eq p i)]
-          (set! (.-eq idx) eq)
-          i)))
-  (-get-uniq [idx p]
-    (or (get uniq p)
-        (let [rf (fn [m id v]
-                   (let [ival (-property p v)]
-                     (assert (not (contains? m ival)))
-                     (assoc! m ival id)))
-              i (persistent! (reduce-kv rf (transient {}) v))
-              uniq (assoc uniq p i)]
-          (set! (.-uniq idx) uniq)
-          i)))
-  (-get-sorted [idx p]
-    (or (get sorted p)
-        (let [rf (fn [m id v]
-                   (let [ival (-property p v)]
-                     (assoc m ival (assoc (get m ival {}) id id))))
-              i (reduce-kv rf (sorted-map) v)
-              srt (assoc sorted p i)]
-          (set! (.-sorted idx) srt)
-          i)))
+  (-rewrap [idx auto] (IndexedPersistentVector. v eq uniq sorted auto))
+  (-get-index [idx p kind]
+    (case kind
+      :idx/hash
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-eq-from-associative v p)
+                eq (assoc eq p i)]
+            (set! (.-eq idx) eq)
+            i))
+
+      :idx/unique
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-uniq-from-associative v p)
+                uniq (assoc uniq p i)]
+            (set! (.-uniq idx) uniq)
+            i))
+
+      :idx/sort
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-sorted-from-associative v p)
+                sorted (assoc eq p i)]
+            (set! (.-sorted idx) sorted)
+            i))))
+  (-add-index [idx p kind]
+    (case kind
+      :idx/hash
+      (if (get eq p)
+        idx
+        (IndexedPersistentVector. v (assoc eq p (create-eq-from-associative v p)) uniq sorted auto))
+      :idx/unique
+      (if (get uniq p)
+        idx
+        (IndexedPersistentVector. v eq (assoc uniq p (create-uniq-from-associative v p)) sorted auto))
+      :idx/sort
+      (if (get sorted p)
+        idx
+        (IndexedPersistentVector. v eq uniq (assoc sorted p (create-sorted-from-associative v p)) auto))))
+  (-del-index [idx p kind]
+    (case kind
+      :idx/hash
+      (if (get eq p)
+        (IndexedPersistentVector. v (dissoc eq p) uniq sorted auto)
+        idx)
+      :idx/unique
+      (if (get uniq p)
+        (IndexedPersistentVector. v eq (dissoc uniq p) sorted auto)
+        idx)
+      :idx/sort
+      (if (get sorted p)
+        (IndexedPersistentVector. v eq uniq (dissoc sorted p) auto)
+        idx)))
+  (-elements [idx] v)
+  (-id-element-pairs [idx] (map-indexed vector v))
   RandomAccess
   Comparable
   (compareTo [this o] (.compareTo ^Comparable v o))
@@ -340,7 +473,7 @@
   (iterator [this] (.iterator ^Iterable v))
   Counted
   IObj
-  (withMeta [this meta] (IndexedPersistentVector. (.withMeta ^IObj v meta) eq uniq sorted))
+  (withMeta [this meta] (IndexedPersistentVector. (.withMeta ^IObj v meta) eq uniq sorted auto))
   IMeta
   (meta [this] (.meta ^IMeta v))
   IPersistentVector
@@ -355,21 +488,24 @@
           (.assocN ^IPersistentVector v i val)
           (some-> eq (add-eq i val))
           (some-> uniq (add-uniq i val))
-          (some-> sorted (add-sorted i val)))
+          (some-> sorted (add-sorted i val))
+          auto)
 
         :else
         (IndexedPersistentVector.
           (.assocN ^IPersistentVector v i val)
           (some-> eq (add-eq i old-element val))
           (some-> uniq (add-uniq i old-element val))
-          (some-> sorted (add-sorted i old-element val))))))
+          (some-> sorted (add-sorted i old-element val))
+          auto))))
   (cons [this val]
     (let [i (.length ^IPersistentVector v)]
       (IndexedPersistentVector.
         (.cons ^IPersistentVector v val)
         (some-> eq (add-eq i val))
         (some-> uniq (add-uniq i val))
-        (some-> sorted (add-sorted i val)))))
+        (some-> sorted (add-sorted i val))
+        auto)))
   Seqable
   (seq [this] (.seq ^Seqable v))
   Reversible
@@ -379,7 +515,7 @@
   (nth [this i notFound] (.nth ^Indexed v i notFound))
   IPersistentCollection
   (count [this] (.count ^IPersistentCollection v))
-  (empty [this] (IndexedPersistentVector. (.empty ^IPersistentCollection v) eq uniq sorted))
+  (empty [this] (IndexedPersistentVector. (.empty ^IPersistentCollection v) eq uniq sorted auto))
   (equiv [this o] (.equiv ^IPersistentCollection v o))
   IPersistentStack
   (peek [this] (.peek ^IPersistentStack v))
@@ -390,7 +526,8 @@
         (pop ^IPersistentStack v)
         (some-> eq (del-eq i old-element))
         (some-> uniq (del-uniq old-element))
-        (some-> sorted (del-sorted i old-element)))))
+        (some-> sorted (del-sorted i old-element))
+        auto)))
   ILookup
   (valAt [this key] (.valAt ^ILookup v key))
   (valAt [this key notFound] (.valAt ^ILookup v key notFound))
@@ -421,39 +558,67 @@
   [s
    ^:unsynchronized-mutable eq
    ^:unsynchronized-mutable uniq
-   ^:unsynchronized-mutable sorted]
+   ^:unsynchronized-mutable sorted
+   ^boolean auto]
   Idx
-  (-get-eq [idx p]
-    (or (get eq p)
-        (let [rf (fn [m id]
-                   (let [ival (-property p id)]
-                     (assoc! m ival (assoc (get m ival {}) id id))))
-              i (persistent! (reduce rf (transient {}) s))
-              eq (assoc eq p i)]
-          (set! (.-eq idx) eq)
-          i)))
-  (-get-uniq [idx p]
-    (or (get uniq p)
-        (let [rf (fn [m id]
-                   (let [ival (-property p id)]
-                     (assert (not (contains? m ival)))
-                     (assoc! m ival id)))
-              i (persistent! (reduce rf (transient {}) s))
-              uniq (assoc uniq p i)]
-          (set! (.-uniq idx) uniq)
-          i)))
-  (-get-sorted [idx p]
-    (or (get sorted p)
-        (let [rf (fn [m id]
-                   (let [ival (-property p id)]
-                     (assoc m ival (assoc (get m ival {}) id id))))
-              i (reduce rf (sorted-map) s)
-              srt (assoc sorted p i)]
-          (set! (.-sorted idx) srt)
-          i)))
+  (-rewrap [idx auto] (IndexedPersistentSet. s eq uniq sorted auto))
+  (-get-index [idx p kind]
+    (case kind
+      :idx/hash
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-eq-from-elements s p)
+                eq (assoc eq p i)]
+            (set! (.-eq idx) eq)
+            i))
 
+      :idx/unique
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-unique-from-elements s p)
+                uniq (assoc uniq p i)]
+            (set! (.-uniq idx) uniq)
+            i))
+
+      :idx/sort
+      (or (get eq p)
+          (when-not auto nil)
+          (let [i (create-sorted-from-elements s p)
+                sorted (assoc eq p i)]
+            (set! (.-sorted idx) sorted)
+            i))))
+  (-add-index [idx p kind]
+    (case kind
+      :idx/hash
+      (if (get eq p)
+        idx
+        (IndexedPersistentSet. s (assoc eq p (create-eq-from-elements s p)) uniq sorted auto))
+      :idx/unique
+      (if (get uniq p)
+        idx
+        (IndexedPersistentSet. s eq (assoc uniq p (create-unique-from-elements s p)) sorted auto))
+      :idx/sort
+      (if (get sorted p)
+        idx
+        (IndexedPersistentSet. s eq uniq (assoc sorted p (create-sorted-from-elements s p)) auto))))
+  (-del-index [idx p kind]
+    (case kind
+      :idx/hash
+      (if (get eq p)
+        (IndexedPersistentSet. s (dissoc eq p) uniq sorted auto)
+        idx)
+      :idx/unique
+      (if (get uniq p)
+        (IndexedPersistentSet. s eq (dissoc uniq p) sorted auto)
+        idx)
+      :idx/sort
+      (if (get sorted p)
+        (IndexedPersistentSet. s eq uniq (dissoc sorted p) auto)
+        idx)))
+  (-elements [idx] s)
+  (-id-element-pairs [idx] (map (fn [x] [x x]) s))
   IObj
-  (withMeta [this meta] (IndexedPersistentSet. (.withMeta ^IObj s meta) eq uniq sorted))
+  (withMeta [this meta] (IndexedPersistentSet. (.withMeta ^IObj s meta) eq uniq sorted auto))
   IMeta
   (meta [this] (.meta ^IMeta s))
   Collection
@@ -485,7 +650,8 @@
           ns
           (some-> eq (del-eq key key))
           (some-> uniq (del-uniq key))
-          (some-> sorted (del-sorted key key))))))
+          (some-> sorted (del-sorted key key))
+          auto))))
   (contains [this key] (.contains ^IPersistentSet s key))
   (get [this key] (.get ^IPersistentSet s key))
   Seqable
@@ -500,32 +666,41 @@
           ns
           (some-> eq (add-eq o o))
           (some-> uniq (add-uniq o o))
-          (some-> sorted (add-sorted o o))))))
-  (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) nil nil nil))
+          (some-> sorted (add-sorted o o))
+          auto))))
+  (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) nil nil nil auto))
   (equiv [this o] (.equiv ^IPersistentSet s o))
   Object
   (hashCode [this] (.hashCode s))
   (equals [this obj] (.equals s obj))
   (toString [this] (.toString s)))
 
-(defprotocol Wrap
-  (-wrap [coll]))
-
 (extend-protocol Wrap
-  IndexedPersistentMap (-wrap [this] this)
-  IndexedPersistentVector (-wrap [this] this)
-  IndexedPersistentSet (-wrap [this] this)
+  IndexedPersistentMap
+  (-wrap [^IndexedPersistentMap this auto]
+    (if (= auto (.-auto this))
+      this
+      (-rewrap this auto)))
+  IndexedPersistentVector
+  (-wrap [^IndexedPersistentVector this auto]
+    (if (= auto (.-auto this))
+      this
+      (-rewrap this auto)))
+  IndexedPersistentSet
+  (-wrap [this auto]
+    (if (= auto (.-auto this))
+      this
+      (-rewrap this auto)))
   IPersistentMap
-  (-wrap [this] (->IndexedPersistentMap this nil nil nil))
+  (-wrap [this auto] (->IndexedPersistentMap this nil nil nil auto))
   IPersistentVector
-  (-wrap [this] (->IndexedPersistentVector this nil nil nil))
+  (-wrap [this auto] (->IndexedPersistentVector this nil nil nil auto))
   IPersistentSet
-  (-wrap [this] (->IndexedPersistentSet this nil nil nil))
+  (-wrap [this auto] (->IndexedPersistentSet this nil nil nil auto))
+  nil
+  (-wrap [this auto] (-wrap [] auto))
   Object
-  (-wrap [this] (-wrap (with-meta (vec this) (meta this)))))
-
-(defprotocol Unwrap
-  (-unwrap [coll]))
+  (-wrap [this auto] (-wrap (with-meta (vec this) (meta this)) auto)))
 
 (extend-protocol Unwrap
   nil
@@ -539,25 +714,52 @@
   IndexedPersistentSet
   (-unwrap [coll] (with-meta (.-s ^IndexedPersistentSet coll) nil)))
 
-(defn idx
+(defn auto-idx
   "Takes a set, vector or map and wraps it so that its elements support indexed queries.
 
   Indexes are created on demand to satisfy queries and then are reused.
 
   Indexes once realised will be maintained incrementally as you call conj, assoc and so on on the collection.
 
-  The coll must be an associative collection (vector, map or set). If your collection is not associative, it is converted to a vector.
+  The coll must be a vector, map or set. If you pass a seq/seqable/iterable it is converted to a vector.
 
   Metadata is carried over to the new structure.
 
   If the collection is already indexed, it is returned as-is without modification."
   [coll]
-  (-wrap coll))
+  (-wrap coll true))
 
 (defn unwrap
   "Returns the backing collection without indexes."
   [coll]
   (-unwrap coll))
+
+(defn idx
+  "Adds indexes to the collection, returning a new indexed collection.
+
+  Specify a property/predicate to index, and a `kind` being:
+
+  `:idx/unique` (for identify and replace-by calls)
+  `:idx/hash (for group calls)`
+  `:idx/sorted` (for ascending/descending calls)"
+  ([coll] coll)
+  ([coll p kind] (-add-index coll p kind))
+  ([coll p kind & more]
+    (loop [coll (-add-index coll p kind)
+           more more]
+      (if-some [[p kind & more] (seq more)]
+        (recur (-add-index coll p kind) more)
+        coll))))
+
+(defn delete-index
+  "Deletes indexes from the collection, returning a new collection."
+  ([coll p kind] (-del-index coll p kind))
+  ([coll p kind & more]
+   (loop [coll (-del-index coll p kind)
+          more more]
+     (if-some [[p kind & more] (seq more)]
+       (recur (-del-index coll p kind) more)
+       coll))))
 
 (defrecord Comp [p1 p2]
   Property
@@ -567,11 +769,6 @@
   "Like clojure.core/comp but on properties."
   [p1 p2]
   (->Comp p1 p2))
-
-(extend-protocol Predicate
-  Object
-  (-prop [this] (->Comp boolean this))
-  (-val [this] true))
 
 (defrecord Select [ps]
   Property
@@ -610,59 +807,79 @@
 (defn group
   "Returns an (unordered) vector of items where (p element) equals v.
 
-  p is a function, but it is expected that you use functions with equality semantics.
-
-  The 2-ary form finds all elements where (p element) returns truthy."
-  ([idx p] (group idx (-prop p) (-val p)))
+  The 2-ary takes a **predicate** which composes a property with its expected value, either a `(match)` form, or a `(pred)` form."
+  ([idx pred] (group idx (-prop pred) (-val pred)))
   ([idx p v]
    (if (instance? Pred v)
      (group idx (pcomp (-prop v) p) (-val v))
-     (let [i (-get-eq idx p)
-           m (get i v {})
-           a (object-array (count m))]
-       (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
-       (LazilyPersistentVector/createOwning a)))))
+     (if-some [i (-get-index idx p :idx/hash)]
+       (let [m (get i v {})]
+         (if (<= (count m) 32)
+           (let [a (object-array (count m))]
+             (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
+             (LazilyPersistentVector/createOwning a))
+           (persistent! (reduce conj! (transient []) (vals m)))))
+       (filterv (fn [element] (= v (-property p element))) idx)))))
 
 (defn identify
-  "Returns the unique element where (-property p element) equals v.
-
-  p is a function, but it is expected that you use functions with equality semantics."
-  ([idx p] (identify idx (-prop p) (-val p)))
-  ([idx p v]
+  "Returns the unique element where the property equals v."
+  ([coll pred] (identify coll (-prop pred) (-val pred)))
+  ([coll p v]
    (if (instance? Pred v)
-     (identify idx (pcomp (-prop v) p) (-val v))
-     (let [i (-get-uniq idx p)
-           id (get i v)]
-       (when (some? id)
-         (idx id))))))
+     (identify coll (pcomp (-prop v) p) (-val v))
+     (if-some [i (-get-index coll p :idx/unique)]
+       (let [id (get i v)]
+         (when (some? id)
+           (coll id)))
+       (some (fn [element] (when (= v (-property p element)) element)) (-elements coll))))))
+
+(defn replace-by
+  "Replaces an element by an alternative key."
+  ([coll pred element] (replace-by coll (-prop pred) (-val pred) element))
+  ([coll p v element]
+   (if (instance? Pred v)
+     (replace-by coll (pcomp (-prop v) p) (-val v) element)
+     (if-some [i (-get-index coll p :idx/unique)]
+       (let [id (get i v)]
+         (if (associative? coll)
+           (assoc coll id element)
+           (-> coll (disj id) (conj element))))
+       (let [id (some (fn [[id element]] (when (= v (-property p element)) id)) (-elements coll))]
+         (if (associative? coll)
+           (assoc coll id element)
+           (-> coll (disj id) (conj element))))))))
 
 (defn ascending
-  "Returns an ascending order seq of elements where (test (-property p element) v) returns true.
+  "Returns an ascending order seq of elements where (test (p element) v) returns true.
 
   The order is defined by the value of v.
 
   This is much like subseq in the clojure.core."
-  [idx p test v]
-  (let [i (-get-sorted idx p)]
+  [coll p test v]
+  (let [i (-get-index coll p :index/sorted)
+        i (or i (create-sorted-from-elements (-elements coll) p))]
     (if (some? i)
       (let [alist (ArrayList. 16)
-            add-map (fn [_ id _] (.add alist (idx id)))]
+            add-map (fn [_ id _] (.add alist (coll id)))]
         (->> (subseq i test v)
              (reduce (fn [e] (reduce-kv add-map nil (val e)))))
-        (LazilyPersistentVector/createOwning (.toArray alist)))
+        (if (<= (.size alist) 32)
+          (LazilyPersistentVector/createOwning (.toArray alist))
+          (into [] alist)))
       ())))
 
 (defn descending
-  "Returns a descending order seq of elements where (test (-property p element) v) returns true.
+  "Returns a descending order seq of elements where (test (p element) v) returns true.
 
   The order is defined by the value of v.
 
   This is much like rsubseq in the clojure.core."
-  [idx p test v]
-  (let [i (-get-sorted idx p)]
+  [coll p test v]
+  (let [i (-get-index coll p :index/sorted)
+        i (or i (create-sorted-from-elements (-elements coll) p))]
     (if (some? i)
       (let [alist (ArrayList. 16)
-            add-map (fn [_ id _] (.add alist (idx id)))]
+            add-map (fn [_ id _] (.add alist (coll id)))]
         (->> (rsubseq i test v)
              (reduce (fn [e] (reduce-kv add-map nil (val e)))))
         (LazilyPersistentVector/createOwning (.toArray alist)))
