@@ -40,7 +40,7 @@ You can also later remove indexes with `delete-index`.
 
 Kind is either:
 
-`:idx/hash` for fash `group` calls
+`:idx/hash` for fast `group` calls
 `:idx/unique` for fast `identify` / `replace-by` calls.
 `:idx/sorted` for fast `ascending` / `descending` calls.
 
