@@ -17,7 +17,7 @@ alternative fast access paths to their elements.
 - If you are only querying once or twice, it is almost always faster to just use sequence functions than build indexes.
 - For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
 - If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
-- Each index uses memory proportional to the collection size. 
+- Each index uses memory, so we need to make sure we consider that. This is particularly important to think about when using automatic-indexing.
 
 ## Usage
 
