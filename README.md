@@ -173,7 +173,7 @@ Some handy functions are enabled due to the presence of indexes.
 
 Replaces an element in the collection identified by the property/value or predicate.
 
-Uses a unique index if one is available (always true if you `auto-idx`)
+Uses a unique index if one is available (always true if you [auto-idx](#automatically-index-your-collection-as-it-is-queried))
 
 e.g 
 
@@ -184,11 +184,15 @@ e.g
 #### `unwrap`
 
 As maintaining indexes can become expensive if you want to make a lot of modifications, you can completely remove any indexing
-with `(unwrap coll)`.
+with `unwrap`.
+
+```clojure
+(unwrap coll)
+```
 
 #### `delete-index`
 
-Returns a new collection without the specified index(es), uses same index specification as [idx](#idx)
+Returns a new collection without the specified index(es), uses same index specification as [idx](#manually-index-your-collection)
 
 ```clojure 
 (delete-index coll :foo :idx/hash)
@@ -218,12 +222,12 @@ You can lift any function into a truthy/falsey test with [pred](#pred).
  
 #### Mutability 
 
-- If you use `auto-idx` indexes are cached as you query using mutable fields. This is similar to how 
+- If you use [auto-idx](#automatically-index-your-collection-as-it-is-queried) indexes are cached as you query using mutable fields. This is similar to how 
   clojure caches hash codes. This should have no impact on thinking of these structures as persistent as the only 
   characteristic it changes is the performance of repeated lookups. 
-- When you query an `auto-idx` coll on multiple threads they could race as they try to create the index. This does not introduce
+- When you query an [auto-idx](#automatically-index-your-collection-as-it-is-queried) coll on multiple threads they could race as they try to create the index. This does not introduce
   consistency issues (as they will all return the same answer), it might cause some redundant computation however. If this is important, manually index with
-  `idx`.
+  [idx](#manually-index-your-collection).
  
 
 ## License
