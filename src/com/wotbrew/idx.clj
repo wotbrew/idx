@@ -844,7 +844,7 @@
          (if (associative? coll)
            (assoc coll id element)
            (-> coll (disj id) (conj element))))
-       (let [id (some (fn [[id element]] (when (= v (-property p element)) id)) (-elements coll))]
+       (let [id (some (fn [[id element]] (when (= v (-property p element)) id)) (-id-element-pairs coll))]
          (if (associative? coll)
            (assoc coll id element)
            (-> coll (disj id) (conj element))))))))

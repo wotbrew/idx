@@ -37,9 +37,9 @@ You can also later remove indexes with `delete-index`.
 
 Kind is either:
 
-`:idx/hash` for fast `group` calls
-`:idx/unique` for fast `identify` / `replace-by` calls.
-`:idx/sorted` for fast `ascending` / `descending` calls.
+- `:idx/hash` for fast `group` calls
+- `:idx/unique` for fast `identify` / `replace-by` calls.
+- `:idx/sorted` for fast `ascending` / `descending` calls.
 
 The resulting indexing collection meets the interface of its (map/vector/set) input, if you add/associate/remove elements
 the indexes will be maintained on your behalf.
@@ -58,6 +58,8 @@ Caveats to this approach:
 
 - You could end up creating a lot of indexes, which slow down `conj`, `assoc`, `dissoc` and so on.
 - Redundant indexes take up memory, remember you can `delete-index`.
+
+You can still call `idx` on `auto-idx` collections if you want to force certain indexes ahead of time.
 
 ### Query your collection 
 
@@ -179,6 +181,16 @@ Functions implement Property, they are not looked up as keys, but rather applied
 - nested paths with `(path prop1 prop2 ...)`.
 - any other object is looked up with `(get element o)`
 - escape functions to `(get element o)` with `(as-key o)`
+
+#### Mutability 
+
+- If you use `auto-idx` indexes are cached as you query using mutable fields. This is similar to how 
+  clojure caches hash codes. This should have no impact on thinking of these structures as persistent as the only 
+  characteristic it changes is the performance of repeated lookups. 
+- When you query an `auto-idx` coll on multiple threads they could race as they try to create the index. This does not introduce
+  consistency issues (as they will all return the same answer), it might cause some redundant computation however. If this is important, manually index with
+  `idx`.
+ 
 
 ## License
 

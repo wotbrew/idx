@@ -100,3 +100,7 @@
   (is (= {42 0 43 1} (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/unique) :foo :idx/unique)))
   (is (= {42 {0 0} 43 {1 1}} (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/sort) :foo :idx/sort)))
   (is (sorted? (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/sort) :foo :idx/sort))))
+
+(deftest replace-by-test
+  (is (= [42 43] (replace-by [41 43] identity 41 42)))
+  (is (= [42 43] (replace-by (auto-idx [41 43]) identity 41 42))))
