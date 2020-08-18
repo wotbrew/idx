@@ -29,7 +29,7 @@ All functions are available in the `com.wotbrew.idx` namespace.
 ;; or
 (idx coll p kind ...)
 
-e.g 
+;; e.g 
 
 (idx coll :id :idx/unique :name :idx/hash :created-at :idx/sort)
 ```
