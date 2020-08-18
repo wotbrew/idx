@@ -1,5 +1,7 @@
 # idx
 
+_`idx` lets you treat your collection like a database_.
+
 This library provides clojure data structures (maps, sets and vectors) that allow for secondary indexes. Providing 
 alternative fast access paths to their elements.
 
@@ -8,8 +10,8 @@ alternative fast access paths to their elements.
 - Wrappers for vectors, sets and maps.
 - Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#properties)
 - Can choose automatic indexing, where indexes are created and cached transparently as you query the collection.
-- Indexes are maintained incrementally through `conj`, `assoc` and so on.
-- API works on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
+- Indexes are maintained incrementally as you modify your collection with functions - `conj`, `assoc` and so on.
+- Query functions also work on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
 
 ## Caveats
 
@@ -18,6 +20,41 @@ alternative fast access paths to their elements.
 - For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
 - If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
 - Each index uses memory, so we need to make sure we consider that. This is particularly important to think about when using automatic-indexing.
+
+## Why 
+
+It is common to have the problem of taking repeated linear lookups (as you might accomplish with `filter`) to a sub-linear one. Typically what happens
+is you use `group-by` or write some code to transform your collection into some kind of map to allow for fast lookup of its elements.
+
+There are 3 problems that `idx` tries to solve:
+
+- proliferation of `-by-this` or `by-that` type locals (or worse args, or keys) that only serve as fast paths to your actual data.
+- allowing for profiler driven optimisation without massively restructuring the code.
+- index invalidation as data changes
+
+Lets say we have a large collection of orders, and a large collection of items, I want to join the groups of items for each order under the :items key.
+
+Typical solution would look like this:
+```clojure
+(let [item-idx (group-by :order-id items)]
+  (for [order orders]
+    (assoc order :items (item-idx (:order-id order))))  )
+```
+
+Now this case is not too egregious, however in real code it is tempting to pass your indexes between functions, introducing incidental complexity to their signatures, which I find very, very smelly.
+If you do not do that - you are often loosing gains by not sharing them as you repeatedly construct expensive indexes.
+
+Furthermore we have to structure our code around the indexes, they are not easy to add and remove independent of the usages.
+
+If you are manually creating indexes and have to change your data, then you have to do that yourself. 
+
+There are many solutions in this space, but I have not seen one that does not convert your data into something else. You can look at this library
+as a drop-in you can use to supercharge your existing collections.
+
+`idx` is not trying to compete with databases like [datascript](https://github.com/tonsky/datascript). It is intending to compete with a proliferation of manual `group-by`, `index-by` style calls in order 
+to find data in your collections.
+ 
+ **Its performance should be good enough that it competes with manual indexing**.
 
 ## Usage
 
