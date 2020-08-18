@@ -44,7 +44,7 @@
   (-get-index [coll p kind] nil)
   (-del-index [coll p kind] coll)
   (-add-index [coll p kind] (-> (-wrap coll false) (-add-index p kind)))
-  (-elements [coll p kind] (-elements (-wrap coll false)))
+  (-elements [coll] (-elements (-wrap coll false)))
   (-id-element-pairs [coll] (-id-element-pairs (-wrap coll false))))
 
 (defn- create-eq-from-associative
@@ -223,27 +223,27 @@
     (case kind
       :idx/hash
       (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-eq-from-associative m p)
-                eq (assoc eq p i)]
-            (set! (.-eq idx) eq)
-            i))
+          (when auto
+            (let [i (create-eq-from-associative m p)
+                  eq (assoc eq p i)]
+              (set! (.-eq idx) eq)
+              i)))
 
       :idx/unique
-      (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-uniq-from-associative m p)
-                uniq (assoc uniq p i)]
-            (set! (.-uniq idx) uniq)
-            i))
+      (or (get uniq p)
+          (when auto
+            (let [i (create-uniq-from-associative m p)
+                  uniq (assoc uniq p i)]
+              (set! (.-uniq idx) uniq)
+              i)))
 
       :idx/sort
-      (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-sorted-from-associative m p)
-                sorted (assoc eq p i)]
-            (set! (.-sorted idx) sorted)
-            i))))
+      (or (get sorted p)
+          (when auto
+            (let [i (create-sorted-from-associative m p)
+                  sorted (assoc eq p i)]
+              (set! (.-sorted idx) sorted)
+              i)))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -389,27 +389,27 @@
     (case kind
       :idx/hash
       (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-eq-from-associative v p)
-                eq (assoc eq p i)]
-            (set! (.-eq idx) eq)
-            i))
+          (when auto
+            (let [i (create-eq-from-associative v p)
+                  eq (assoc eq p i)]
+              (set! (.-eq idx) eq)
+              i)))
 
       :idx/unique
-      (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-uniq-from-associative v p)
-                uniq (assoc uniq p i)]
-            (set! (.-uniq idx) uniq)
-            i))
+      (or (get uniq p)
+          (when auto
+            (let [i (create-uniq-from-associative v p)
+                  uniq (assoc uniq p i)]
+              (set! (.-uniq idx) uniq)
+              i)))
 
       :idx/sort
-      (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-sorted-from-associative v p)
-                sorted (assoc eq p i)]
-            (set! (.-sorted idx) sorted)
-            i))))
+      (or (get sorted p)
+          (when auto
+            (let [i (create-sorted-from-associative v p)
+                  sorted (assoc eq p i)]
+              (set! (.-sorted idx) sorted)
+              i)))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -566,27 +566,27 @@
     (case kind
       :idx/hash
       (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-eq-from-elements s p)
-                eq (assoc eq p i)]
-            (set! (.-eq idx) eq)
-            i))
+          (when auto
+            (let [i (create-eq-from-elements s p)
+                  eq (assoc eq p i)]
+              (set! (.-eq idx) eq)
+              i)))
 
       :idx/unique
-      (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-unique-from-elements s p)
-                uniq (assoc uniq p i)]
-            (set! (.-uniq idx) uniq)
-            i))
+      (or (get uniq p)
+          (when auto
+            (let [i (create-unique-from-elements s p)
+                  uniq (assoc uniq p i)]
+              (set! (.-uniq idx) uniq)
+              i)))
 
       :idx/sort
-      (or (get eq p)
-          (when-not auto nil)
-          (let [i (create-sorted-from-elements s p)
-                sorted (assoc eq p i)]
-            (set! (.-sorted idx) sorted)
-            i))))
+      (or (get sorted p)
+          (when auto
+            (let [i (create-sorted-from-elements s p)
+                  sorted (assoc eq p i)]
+              (set! (.-sorted idx) sorted)
+              i)))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -808,18 +808,18 @@
   "Returns an (unordered) vector of items where (p element) equals v.
 
   The 2-ary takes a **predicate** which composes a property with its expected value, either a `(match)` form, or a `(pred)` form."
-  ([idx pred] (group idx (-prop pred) (-val pred)))
-  ([idx p v]
+  ([coll pred] (group coll (-prop pred) (-val pred)))
+  ([coll p v]
    (if (instance? Pred v)
-     (group idx (pcomp (-prop v) p) (-val v))
-     (if-some [i (-get-index idx p :idx/hash)]
+     (group coll (pcomp (-prop v) p) (-val v))
+     (if-some [i (-get-index coll p :idx/hash)]
        (let [m (get i v {})]
          (if (<= (count m) 32)
            (let [a (object-array (count m))]
-             (reduce-kv (fn [i id _] (aset a (int i) (idx id)) (unchecked-inc-int i)) (int 0) m)
+             (reduce-kv (fn [i id _] (aset a (int i) (coll id)) (unchecked-inc-int i)) (int 0) m)
              (LazilyPersistentVector/createOwning a))
-           (persistent! (reduce conj! (transient []) (vals m)))))
-       (filterv (fn [element] (= v (-property p element))) idx)))))
+           (persistent! (transduce (map coll) conj! (transient []) (vals m)))))
+       (filterv (fn [element] (= v (-property p element))) coll)))))
 
 (defn identify
   "Returns the unique element where the property equals v."
@@ -902,7 +902,7 @@
   (-property [this element] (get element k)))
 
 (defn as-key
-  "Returns a property that looks up k as a key. Only useful if you are using functions or vars as keys."
+  "Returns a property that looks up k as a key. Only useful if you are using functions as keys."
   [k]
   (->AsKey k))
 

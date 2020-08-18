@@ -125,9 +125,11 @@ In order to index a match, either use an `auto-idx` coll or use the `:idx/value`
 
 #### `pred`
 
-`pred` allows you to place truthyness/falseyness tests in the value position(s) of `match`, `group` and `identify` calls.
+`pred` creates a predicate that uses a truthy/falsey index. It can be used in the value position of matches.
 
 `(match :foo (pred even?))`
+
+`(group :foo (pred even?))`
 
 #### `pcomp`
 
