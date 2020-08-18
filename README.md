@@ -102,7 +102,8 @@ are indexing a get-in call.
 
 #### `match`
 
-`match` composes properties to form composite indexes. 
+`match` composes properties to form composite indexes. `match` returns a Predicate implementation so
+you do not have to redundantly respecify the structure in the value position.
 
 `(group numbers (match neg? true, even? true))`
 
@@ -178,18 +179,6 @@ Functions implement Property, they are not looked up as keys, but rather applied
 - nested paths with `(path prop1 prop2 ...)`.
 - any other object is looked up with `(get element o)`
 - escape functions to `(get element o)` with `(as-key o)`
-
-### Predicates
-
-As well as supplying properties and values directly to `group` and `identify` you can omit the value and instead apply a Predicate.
-
-A predicate is an object implementing the Predicate protocol. By default, objects applied as predicates are used as a property, whose truthyness is indexed.
-This works well for existence checks, and function predicates. Therefore you can say `(group coll even?)`
-
-#### Built-in Predicates
-
-- compose predicates into a match with `(match prop1 val prop2 val)`, this can be used to form composite indexes over many properties.
-- any other object is a truthyness test by applying at as a property.
 
 ## License
 
