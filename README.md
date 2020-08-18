@@ -50,7 +50,7 @@ the indexes will be maintained on your behalf.
 (auto-idx coll)
 ```
 
-This returns an indexed collection that creates indexes (and caches) them on demand as you query.
+This returns an indexed collection that creates indexes (and caches them) on demand as you query.
 
 This can be good in local contexts where you only want to specify indexes once where they are used.
 
@@ -69,15 +69,21 @@ Once wrapped with idx, a small suite of functions is available to query your col
 
 Uses a one-to-many hash index if available.
 
-Returns vectors of elements. You pass a predicate or property to test and value to match.
+Returns vectors of (unsorted) elements. You pass a predicate or property to test and value to match.
 
 Say you have a vector of users, each with an age key, you might do:
 
-`(group users :age 10)` 
+```clojure 
+(group users :age 10)
+```
 
 Say you have a vector of numbers, and you want to find the negative ones, functions are both properties and predicates.
 
-`(group numbers neg? true)` or `(group coll neg?)`.
+```clojure 
+(group numbers neg? true)
+;; or
+(group coll neg?)
+```
 
 #### `identify`
 
