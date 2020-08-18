@@ -9,6 +9,7 @@ alternative fast access paths to their elements.
 - Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#properties)
 - Can choose automatic indexing, where indexes are created and cached transparently as you query the collection.
 - Indexes are maintained incrementally through `conj`, `assoc` and so on.
+- API works on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
 
 ## Caveats
 
@@ -64,7 +65,7 @@ Once wrapped with idx, a small suite of functions is available to query your col
 
 #### `group`
 
-Uses a one-to-many hash index.
+Uses a one-to-many hash index if available.
 
 Returns vectors of elements. You pass a predicate or property to test and value to match.
 
@@ -78,7 +79,7 @@ Say you have a vector of numbers, and you want to find the negative ones, functi
 
 #### `identify`
 
-Uses a one-to-one hash index
+Uses a one-to-one hash index if available.
 
 `identify` operates on unique properties and predicates. It will throw 
 if the property is non unique. Good for by-id type queries.
@@ -87,7 +88,7 @@ if the property is non unique. Good for by-id type queries.
 
 #### `ascending`, `descending`
 
-Uses a one-to-many sorted index.
+Uses a one-to-many sorted index if available.
 
 #### `path`
 
@@ -143,6 +144,8 @@ Some handy functions are enabled due to the presence of indexes.
 #### `replace-by`
 
 Replaces an element in the collection identified by the property/value or predicate.
+
+Uses a unique index if one is available (always true if you `auto-idx`)
 
 e.g 
 
