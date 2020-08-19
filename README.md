@@ -8,7 +8,7 @@ alternative fast access paths to their elements.
 ## Features
 
 - Wrappers for vectors, sets and maps.
-- Index elements on demand by any property, such as clojure functions, keywords, paths, selections. See [reference](#properties)
+- Index elements on demand by any property, such as clojure functions, keywords, paths, or composites thereof. See [reference](#properties)
 - Can choose automatic indexing, where indexes are created and cached transparently as you query the collection.
 - Indexes are maintained incrementally as you modify your collection with functions - `conj`, `assoc` and so on.
 - Query functions also work on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
@@ -38,10 +38,10 @@ Typical solution would look like this:
 ```clojure
 (let [item-idx (group-by :order-id items)]
   (for [order orders]
-    (assoc order :items (item-idx (:order-id order))))  )
+    (assoc order :items (item-idx (:order-id order)))))
 ```
 
-Now this case is not too egregious, however in real code it is tempting to pass your indexes between functions, introducing incidental complexity to their signatures, which I find very, very smelly.
+Now this case is not too egregious, however in real code it is tempting to pass your indexes between functions, introducing accidental complexity to their signatures (the args would not be there if it were not for insufficient data structures).
 If you do not do that - you are often loosing gains by not sharing them as you repeatedly construct expensive indexes.
 
 Furthermore we have to structure our code around the indexes, they are not easy to add and remove independent of the usages.
@@ -63,9 +63,12 @@ All functions are available in the `com.wotbrew.idx` namespace.
 ### Manually index your collection
 
 ```clojure
-(idx coll p kind ...)
+; (idx coll p kind ...)
 ;; e.g 
+(def coll [{:id 1, :name "fred", :created-at #inst "2018-03-14"} ...])
 (idx coll :id :idx/unique :name :idx/hash :created-at :idx/sort)
+;=> 
+[{:id 1, :name "fred", :created-at #inst "2018-03-14"} ...]
 ```
 
 `idx` returns a new indexed collection with the specified indexes (plus any that already existed).
@@ -117,9 +120,10 @@ Say you have a vector of users, each with an age key, you might do:
 Say you have a vector of numbers, and you want to find the negative ones, functions are both properties and predicates.
 
 ```clojure 
+(def numbers [-1,3,4,-5])
 (group numbers neg? true)
-;; or
-(group coll neg?)
+;; => 
+[-5, -1]
 ```
 
 #### `identify`
@@ -130,7 +134,10 @@ Uses a one-to-one hash index if available.
 if the property is non unique. Good for by-id type queries.
 
 ```clojure 
+(def users [{:id 32344, :name "Fred"} ...])
 (identify users :id 32344)
+;; => 
+{:id 32344, :name "Fred"}
 ```
 
 #### `ascending`, `descending`
@@ -138,8 +145,13 @@ if the property is non unique. Good for by-id type queries.
 Uses a one-to-many sorted index if available.
 
 ```clojure
-(ascending users :created-at > #inst "2020-08-18") ;; ascending sort
-(descending users :created-at <= #inst "2020-08-18") ;; descending sort
+(def users [{:name "Alic", :age 42}
+            {:name "Bob", :age 30}
+            {:name "Barbara", :age 12}
+            {:name "Jim", :age 83}])
+
+(ascending users :age > 30) ;; ascending sort
+(descending users :age <= 30) ;; descending sort
 ```
 
 #### `path`
@@ -243,6 +255,8 @@ Returns a new collection without the specified index(es), uses same index specif
 an object used as a property is looked up as a key in the element. Which works well for the common use case of querying by key.
 
 Functions implement Property, they are not looked up as keys, but rather applied to the element. 
+
+There are a couple of useful property combinators [match](#match) and [pcomp](#pcomp).
 
 #### Built-in Properties
 
