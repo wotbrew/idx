@@ -55,11 +55,11 @@
     (persistent! (reduce-kv rf (transient {}) m))))
 
 (defn- create-eq-from-elements
-  [elements p]
-  (let [rf (fn [m v]
+  [coll p]
+  (let [rf (fn [m [id v]]
              (let [ival (-property p v)]
-               (assoc! m ival (assoc (get m ival {}) v v))))]
-    (persistent! (reduce rf (transient {}) elements))))
+               (assoc! m ival (assoc (get m ival {}) id id))))]
+    (persistent! (reduce rf (transient {}) (-id-element-pairs coll)))))
 
 (defn- create-uniq-from-associative
   [m p]
@@ -69,11 +69,11 @@
     (persistent! (reduce-kv rf (transient {}) m))))
 
 (defn- create-unique-from-elements
-  [elements p]
-  (let [rf (fn [m v]
+  [coll p]
+  (let [rf (fn [m [id v]]
              (let [ival (-property p v)]
-               (assoc! m ival v)))]
-    (persistent! (reduce rf (transient {}) elements))))
+               (assoc! m ival id)))]
+    (persistent! (reduce rf (transient {}) (-id-element-pairs coll)))))
 
 (defn- create-sorted-from-associative
   [m p]
@@ -83,11 +83,11 @@
     (reduce-kv rf (sorted-map) m)))
 
 (defn- create-sorted-from-elements
-  [elements p]
-  (let [rf (fn [m v]
+  [coll p]
+  (let [rf (fn [m [id v]]
              (let [ival (-property p v)]
-               (assoc m ival (assoc (get m ival {}) v v))))]
-    (reduce rf (sorted-map) elements)))
+               (assoc m ival (assoc (get m ival {}) id id))))]
+    (reduce rf (sorted-map) (-id-element-pairs coll))))
 
 ;; for eq/sorted leaves we use maps rather than sets so
 ;; we get the PersistentArrayMap optimisation when small.
@@ -241,7 +241,7 @@
       (or (get sorted p)
           (when auto
             (let [i (create-sorted-from-associative m p)
-                  sorted (assoc eq p i)]
+                  sorted (assoc sorted p i)]
               (set! (.-sorted idx) sorted)
               i)))))
   (-add-index [idx p kind]
@@ -407,7 +407,7 @@
       (or (get sorted p)
           (when auto
             (let [i (create-sorted-from-associative v p)
-                  sorted (assoc eq p i)]
+                  sorted (assoc sorted p i)]
               (set! (.-sorted idx) sorted)
               i)))))
   (-add-index [idx p kind]
@@ -584,7 +584,7 @@
       (or (get sorted p)
           (when auto
             (let [i (create-sorted-from-elements s p)
-                  sorted (assoc eq p i)]
+                  sorted (assoc sorted p i)]
               (set! (.-sorted idx) sorted)
               i)))))
   (-add-index [idx p kind]
@@ -856,16 +856,12 @@
 
   This is much like subseq in the clojure.core."
   [coll p test v]
-  (let [i (-get-index coll p :index/sorted)
+  (let [i (-get-index coll p :idx/sort)
         i (or i (create-sorted-from-elements (-elements coll) p))]
     (if (some? i)
-      (let [alist (ArrayList. 16)
-            add-map (fn [_ id _] (.add alist (coll id)))]
-        (->> (subseq i test v)
-             (reduce (fn [e] (reduce-kv add-map nil (val e)))))
-        (if (<= (.size alist) 32)
-          (LazilyPersistentVector/createOwning (.toArray alist))
-          (into [] alist)))
+      (->> (subseq i test v)
+           ;; todo should this work if coll is a seq
+           (mapcat (fn [e] (map coll (vals (val e))))))
       ())))
 
 (defn descending
@@ -875,14 +871,12 @@
 
   This is much like rsubseq in the clojure.core."
   [coll p test v]
-  (let [i (-get-index coll p :index/sorted)
+  (let [i (-get-index coll p :idx/sort)
         i (or i (create-sorted-from-elements (-elements coll) p))]
     (if (some? i)
-      (let [alist (ArrayList. 16)
-            add-map (fn [_ id _] (.add alist (coll id)))]
-        (->> (rsubseq i test v)
-             (reduce (fn [e] (reduce-kv add-map nil (val e)))))
-        (LazilyPersistentVector/createOwning (.toArray alist)))
+      (->> (rsubseq i test v)
+           ;; todo should this work if coll is a seq
+           (mapcat (fn [e] (map coll (vals (val e))))))
       ())))
 
 (extend-protocol Property
