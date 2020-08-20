@@ -1,6 +1,7 @@
 (ns com.wotbrew.idx
   (:require [com.wotbrew.impl.ext]
-            [com.wotbrew.impl.protocols :as p])
+            [com.wotbrew.impl.protocols :as p]
+            [com.wotbrew.impl.index :as i])
   (:import #?@(:clj [(clojure.lang LazilyPersistentVector)])))
 
 #?(:clj (set! *warn-on-reflection* true))
@@ -34,27 +35,27 @@
   `:idx/hash (for group calls)`
   `:idx/sort` (for ascending/descending calls)"
   ([coll] coll)
-  ([coll p kind] (-add-index coll p kind))
+  ([coll p kind] (p/-add-index coll p kind))
   ([coll p kind & more]
-   (loop [coll (-add-index coll p kind)
+   (loop [coll (p/-add-index coll p kind)
           more more]
      (if-some [[p kind & more] (seq more)]
-       (recur (-add-index coll p kind) more)
+       (recur (p/-add-index coll p kind) more)
        coll))))
 
 (defn delete-index
   "Deletes indexes from the collection, returning a new collection."
-  ([coll p kind] (-del-index coll p kind))
+  ([coll p kind] (p/-del-index coll p kind))
   ([coll p kind & more]
-   (loop [coll (-del-index coll p kind)
+   (loop [coll (p/-del-index coll p kind)
           more more]
      (if-some [[p kind & more] (seq more)]
-       (recur (-del-index coll p kind) more)
+       (recur (p/-del-index coll p kind) more)
        coll))))
 
 (defrecord Comp [p1 p2]
   p/Property
-  (-property [this element] (-property p1 (-property p2 element))))
+  (-property [this element] (p/-property p1 (p/-property p2 element))))
 
 (defn pcomp
   "Like clojure.core/comp but on properties."
@@ -64,7 +65,7 @@
 (defrecord Select [ps]
   p/Property
   (-property [this element]
-    (reduce (fn [m p] (assoc m p (-property p element))) {} ps)))
+    (reduce (fn [m p] (assoc m p (p/-property p element))) {} ps)))
 
 (defrecord Pred [p v]
   p/Predicate
@@ -81,7 +82,7 @@
 (defn- build-match-map
   [m p v]
   (if (instance? Pred v)
-    (build-match-map m (pcomp (-prop v) p) (-val v))
+    (build-match-map m (pcomp (p/-prop v) p) (p/-val v))
     (assoc m p v)))
 
 (defn match
@@ -96,7 +97,7 @@
     (->Pred (->Select (set (keys m))) m)))
 
 (defrecord AsKey [k]
-  Property
+  p/Property
   (-property [this element] (get element k)))
 
 (defn as-key
@@ -105,18 +106,18 @@
   (->AsKey k))
 
 (defrecord Path2 [a b]
-  Property
-  (-property [this element] (->> element (-property a) (-property b))))
+  p/Property
+  (-property [this element] (->> element (p/-property a) (p/-property b))))
 
 (defrecord Path3 [a b c]
-  Property
-  (-property [this element] (->> element (-property a) (-property b) (-property c))))
+  p/Property
+  (-property [this element] (->> element (p/-property a) (p/-property b) (p/-property c))))
 
 (defrecord Path [ps]
-  Property
+  p/Property
   (-property [this element]
     (reduce
-      (fn [v p] (-property p v))
+      (fn [v p] (p/-property p v))
       element
       ps)))
 
@@ -131,11 +132,11 @@
   "Returns an (unordered) vector of items where (p element) equals v.
 
   The 2-ary takes a **predicate** which composes a property with its expected value, either a `(match)` form, or a `(pred)` form."
-  ([coll pred] (group coll (-prop pred) (-val pred)))
+  ([coll pred] (group coll (p/-prop pred) (p/-val pred)))
   ([coll p v]
    (if (instance? Pred v)
-     (group coll (pcomp (-prop v) p) (-val v))
-     (if-some [i (-get-index coll p :idx/hash)]
+     (group coll (pcomp (p/-prop v) p) (p/-val v))
+     (if-some [i (p/-get-index coll p :idx/hash)]
        (let [m (get i v {})]
          (if (<= (count m) 32)
            #?(:clj
@@ -145,53 +146,53 @@
               :cljs
               (mapv coll (vals m)))
            (persistent! (transduce (map coll) conj! (transient []) (vals m)))))
-       (filterv (fn [element] (= v (-property p element))) (-elements coll))))))
+       (filterv (fn [element] (= v (p/-property p element))) (p/-elements coll))))))
 
 (defn pk-group
   "Like group but returns you the (index/keys) of the elements rather than the elements themselves"
-  ([coll pred] (pk-group coll (-prop pred) (-val pred)))
+  ([coll pred] (pk-group coll (p/-prop pred) (p/-val pred)))
   ([coll p v]
    (if (instance? Pred v)
-     (pk-group coll (pcomp (-prop v) p) (-val p))
-     (if-some [i (-get-index coll p :idx/hash)]
+     (pk-group coll (pcomp (p/-prop v) p) (p/-val p))
+     (if-some [i (p/-get-index coll p :idx/hash)]
        (let [m (get i v {})]
          (vec (vals m)))
-       (map first (filter (fn [[_ element]] (= v (-property p element))) (-id-element-pairs coll)))))))
+       (map first (filter (fn [[_ element]] (= v (p/-property p element))) (p/-id-element-pairs coll)))))))
 
 (defn identify
   "Returns the unique element where the property equals v."
-  ([coll pred] (identify coll (-prop pred) (-val pred)))
+  ([coll pred] (identify coll (p/-prop pred) (p/-val pred)))
   ([coll p v]
    (if (instance? Pred v)
-     (identify coll (pcomp (-prop v) p) (-val v))
-     (if-some [i (-get-index coll p :idx/unique)]
+     (identify coll (pcomp (p/-prop v) p) (p/-val v))
+     (if-some [i (p/-get-index coll p :idx/unique)]
        (let [id (get i v)]
          (when (some? id)
            (coll id)))
-       (some (fn [element] (when (= v (-property p element)) element)) (-elements coll))))))
+       (some (fn [element] (when (= v (p/-property p element)) element)) (p/-elements coll))))))
 
 (defn pk
   "Returns the key (index/map key) given a unique property/value pair or predicate."
-  ([coll pred] (pk coll (-prop pred) (-val pred)))
+  ([coll pred] (pk coll (p/-prop pred) (p/-val pred)))
   ([coll p v]
    (if (instance? Pred v)
-     (identify coll (pcomp (-prop v) p) (-val v))
-     (if-some [i (-get-index coll p :idx/unique)]
+     (identify coll (pcomp (p/-prop v) p) (p/-val v))
+     (if-some [i (p/-get-index coll p :idx/unique)]
        (get i v)
-       (some (fn [[id element]] (when (= v (-property p element)) id)) (-id-element-pairs coll))))))
+       (some (fn [[id element]] (when (= v (p/-property p element)) id)) (p/-id-element-pairs coll))))))
 
 (defn replace-by
   "Replaces an element by an alternative key."
-  ([coll pred element] (replace-by coll (-prop pred) (-val pred) element))
+  ([coll pred element] (replace-by coll (p/-prop pred) (p/-val pred) element))
   ([coll p v element]
    (if (instance? Pred v)
-     (replace-by coll (pcomp (-prop v) p) (-val v) element)
-     (if-some [i (-get-index coll p :idx/unique)]
+     (replace-by coll (pcomp (p/-prop v) p) (p/-val v) element)
+     (if-some [i (p/-get-index coll p :idx/unique)]
        (let [id (get i v)]
          (if (associative? coll)
            (assoc coll id element)
            (-> coll (disj id) (conj element))))
-       (let [id (some (fn [[id element]] (when (= v (-property p element)) id)) (-id-element-pairs coll))]
+       (let [id (some (fn [[id element]] (when (= v (p/-property p element)) id)) (p/-id-element-pairs coll))]
          (if (associative? coll)
            (assoc coll id element)
            (-> coll (disj id) (conj element))))))))
@@ -203,11 +204,10 @@
 
   This is much like subseq in the clojure.core."
   [coll p test v]
-  (let [i (-get-index coll p :idx/sort)
-        i (or i (create-sorted-from-elements (-elements coll) p))]
+  (let [i (p/-get-index coll p :idx/sort)
+        i (or i (i/create-sorted-from-elements (p/-elements coll) p))]
     (if (some? i)
       (->> (subseq i test v)
-           ;; todo should this work if coll is a seq
            (mapcat (fn [e] (map coll (vals (val e))))))
       ())))
 
@@ -218,10 +218,9 @@
 
   This is much like rsubseq in the clojure.core."
   [coll p test v]
-  (let [i (-get-index coll p :idx/sort)
-        i (or i (create-sorted-from-elements (-elements coll) p))]
+  (let [i (p/-get-index coll p :idx/sort)
+        i (or i (i/create-sorted-from-elements (p/-elements coll) p))]
     (if (some? i)
       (->> (rsubseq i test v)
-           ;; todo should this work if coll is a seq
            (mapcat (fn [e] (map coll (vals (val e))))))
       ())))

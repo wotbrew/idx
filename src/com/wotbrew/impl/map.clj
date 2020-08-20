@@ -1,7 +1,7 @@
 (ns com.wotbrew.impl.map
   (:require [com.wotbrew.impl.protocols :as p]
             [com.wotbrew.impl.index :as i])
-  (:import (clojure.lang IKVReduce ArityException IPersistentCollection ILookup IPersistentMap Associative IMeta IObj MapEquivalence IHashEq IFn)
+  (:import (clojure.lang IKVReduce ArityException IPersistentCollection ILookup IPersistentMap Associative IMeta IObj MapEquivalence IHashEq IFn Counted Seqable)
            (java.util Map$Entry Map)))
 
 (deftype IndexedPersistentMap

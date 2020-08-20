@@ -1,6 +1,7 @@
 (ns com.wotbrew.idx-testc
   (:require [clojure.test :refer :all])
-  (:require [com.wotbrew.idx :refer :all]))
+  (:require [com.wotbrew.idx :refer :all]
+            [com.wotbrew.impl.protocols :as p]))
 
 (deftest indexed-vector-test
   (let [v (vec (range 100))]
@@ -18,7 +19,7 @@
 
       (is (= (filter even? v) (sort (group v2 (pred even?)))))
       (is (sequential? (group v2 (pred even?))))
-      (is (identical? (-get-index v2 (pred even?) :idx/hash) (-get-index v2 (pred even?) :idx/hash)))
+      (is (identical? (p/-get-index v2 (pred even?) :idx/hash) (p/-get-index v2 (pred even?) :idx/hash)))
       (is (= (filter even? v) (sort (group v2 (pred even?)))))
       (is (= (sort (filter even? (conj v 12))) (sort (group (conj v2 12) (pred even?)))))
 
@@ -44,7 +45,7 @@
 
       (is (= (sort (filter even? s)) (sort (group s2 (pred even?)))))
       (is (sequential? (group s2 (pred even?))))
-      (is (identical? (-get-index s2 (pred even?) :idx/hash) (-get-index s2 (pred even?) :idx/hash)))
+      (is (identical? (p/-get-index s2 (pred even?) :idx/hash) (p/-get-index s2 (pred even?) :idx/hash)))
       (is (= (sort (filter even? s)) (sort (group s2 (pred even?)))))
       (is (= (sort (filter even? (conj s 12))) (sort (group (conj s2 12) (pred even?)))))
 
@@ -68,7 +69,7 @@
 
       (is (= (sort (filter even? (vals m))) (sort (group m2 (pred even?)))))
       (is (sequential? (group m2 (pred even?))))
-      (is (identical? (-get-index m2 even? :idx/hash) (-get-index m2 even? :idx/hash)))
+      (is (identical? (p/-get-index m2 even? :idx/hash) (p/-get-index m2 even? :idx/hash)))
       (is (= (sort (filter even? (vals m))) (sort (group m2 (pred even?)))))
       (is (= (sort (filter even? (vals (assoc m 12 12)))) (sort (group (assoc m2 12 12) (pred even?)))))
 
@@ -96,10 +97,10 @@
   (is (= {even? 4} (identify (auto-idx [{even? 4} {even? 5}]) (as-key even?) 4))))
 
 (deftest idx-test
-  (is (= {42 {0 0} 43 {1 1}} (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/hash) :foo :idx/hash)))
-  (is (= {42 0 43 1} (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/unique) :foo :idx/unique)))
-  (is (= {42 {0 0} 43 {1 1}} (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/sort) :foo :idx/sort)))
-  (is (sorted? (-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/sort) :foo :idx/sort))))
+  (is (= {42 {0 0} 43 {1 1}} (p/-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/hash) :foo :idx/hash)))
+  (is (= {42 0 43 1} (p/-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/unique) :foo :idx/unique)))
+  (is (= {42 {0 0} 43 {1 1}} (p/-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/sort) :foo :idx/sort)))
+  (is (sorted? (p/-get-index (idx [{:foo 42} {:foo 43}] :foo :idx/sort) :foo :idx/sort))))
 
 (deftest replace-by-test
   (is (= [42 43] (replace-by [41 43] identity 41 42)))

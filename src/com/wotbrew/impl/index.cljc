@@ -1,52 +1,52 @@
 (ns com.wotbrew.impl.index
   (:require [com.wotbrew.impl.protocols :as p]))
 
-(defn- create-eq-from-associative
+;; for eq/sorted leaves we use maps rather than sets so
+;; we get the PersistentArrayMap optimisation when small.
+
+(defn create-eq-from-associative
   [m p]
   (let [rf (fn [m id v]
              (let [ival (p/-property p v)]
                (assoc! m ival (assoc (get m ival {}) id id))))]
     (persistent! (reduce-kv rf (transient {}) m))))
 
-(defn- create-eq-from-elements
+(defn create-eq-from-elements
   [coll p]
   (let [rf (fn [m [id v]]
              (let [ival (p/-property p v)]
                (assoc! m ival (assoc (get m ival {}) id id))))]
     (persistent! (reduce rf (transient {}) (p/-id-element-pairs coll)))))
 
-(defn- create-uniq-from-associative
+(defn create-uniq-from-associative
   [m p]
   (let [rf (fn [m id v]
              (let [ival (p/-property p v)]
                (assoc! m ival id)))]
     (persistent! (reduce-kv rf (transient {}) m))))
 
-(defn- create-unique-from-elements
+(defn create-unique-from-elements
   [coll p]
   (let [rf (fn [m [id v]]
              (let [ival (p/-property p v)]
                (assoc! m ival id)))]
     (persistent! (reduce rf (transient {}) (p/-id-element-pairs coll)))))
 
-(defn- create-sorted-from-associative
+(defn create-sorted-from-associative
   [m p]
   (let [rf (fn [m id v]
              (let [ival (p/-property p v)]
                (assoc m ival (assoc (get m ival {}) id id))))]
     (reduce-kv rf (sorted-map) m)))
 
-(defn- create-sorted-from-elements
+(defn create-sorted-from-elements
   [coll p]
   (let [rf (fn [m [id v]]
              (let [ival (p/-property p v)]
                (assoc m ival (assoc (get m ival {}) id id))))]
     (reduce rf (sorted-map) (p/-id-element-pairs coll))))
 
-;; for eq/sorted leaves we use maps rather than sets so
-;; we get the PersistentArrayMap optimisation when small.
-
-(defn- add-eq
+(defn add-eq
   ([eq id element]
    (reduce-kv
      (fn [eq p i]
@@ -75,7 +75,7 @@
      eq
      eq)))
 
-(defn- del-eq [eq id old-element]
+(defn del-eq [eq id old-element]
   (reduce-kv
     (fn [eq p i]
       (let [ov (p/-property p old-element)]
@@ -88,7 +88,7 @@
     eq
     eq))
 
-(defn- add-uniq
+(defn add-uniq
   ([unq id element]
    (reduce-kv
      (fn [unq p i]
@@ -112,7 +112,7 @@
      unq
      unq)))
 
-(defn- del-uniq [unq old-element]
+(defn del-uniq [unq old-element]
   (reduce-kv
     (fn [unq p i]
       (let [ov (p/-property p old-element)]
@@ -123,7 +123,7 @@
     unq
     unq))
 
-(defn- add-sorted
+(defn add-sorted
   ([srt id element]
    (reduce-kv
      (fn [srt p i]
@@ -152,7 +152,7 @@
      srt
      srt)))
 
-(defn- del-sorted [srt id old-element]
+(defn del-sorted [srt id old-element]
   (reduce-kv
     (fn [srt p i]
       (let [ov (p/-property p old-element)]
