@@ -1,5 +1,8 @@
 (ns com.wotbrew.impl.ext
-  (:require [com.wotbrew.impl.protocols :as p]))
+  (:require [com.wotbrew.impl.protocols :as p]
+            [com.wotbrew.impl.map :as imap]
+            [com.wotbrew.impl.vector :as ivec]
+            [com.wotbrew.impl.set :as iset]))
 
 (extend-protocol
   p/Idx
