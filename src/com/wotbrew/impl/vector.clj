@@ -114,7 +114,7 @@
       (cond
         (identical? val old-element) this
 
-        (identical? val ::not-found)
+        (identical? old-element ::not-found)
         (IndexedPersistentVector.
           (.assocN ^IPersistentVector v i val)
           (some-> eq (i/add-eq i val))
@@ -151,8 +151,8 @@
   IPersistentStack
   (peek [this] (.peek ^IPersistentStack v))
   (pop [this]
-    (let [i (.length ^IPersistentVector v)
-          old-element (if (neg? i) nil (nth this (dec i)))]
+    (let [i (dec (.length ^IPersistentVector v))
+          old-element (if (neg? i) nil (nth v i))]
       (IndexedPersistentVector.
         (pop ^IPersistentStack v)
         (some-> eq (i/del-eq i old-element))
@@ -185,4 +185,4 @@
   IKVReduce
   (kvreduce [this f init] (reduce-kv f init v))
   Comparable
-  (compareTo [x y] (.compareTo v y)))
+  (compareTo [x y] (.compareTo ^Comparable v y)))
