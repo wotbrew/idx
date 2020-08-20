@@ -2,8 +2,10 @@
 
 _`idx` lets you treat your collection like a database_.
 
-This library provides clojure data structures (maps, sets and vectors) that allow for secondary indexes. Providing 
+This library provides clojure(script) data structures (maps, sets and vectors) that allow for secondary indexes. Providing 
 alternative fast access paths to their elements.
+
+Supports both Clojure and ClojureScript.
 
 ## Features
 
@@ -15,7 +17,6 @@ alternative fast access paths to their elements.
 
 ## Caveats
 
-- No ClojureScript support, Clojure only for now. (pull requests welcome!)
 - If you are only querying once or twice, it is almost always faster to just use sequence functions than build indexes.
 - For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
 - If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
@@ -79,7 +80,7 @@ Kind is either:
 
 - `:idx/hash` for fast `group` calls
 - `:idx/unique` for fast `identify` / `replace-by` calls.
-- `:idx/sorted` for fast `ascending` / `descending` calls.
+- `:idx/sort` for fast `ascending` / `descending` calls.
 
 The resulting indexing collection meets the interface of its (map/vector/set) input, if you add/associate/remove elements
 the indexes will be maintained on your behalf.
@@ -145,7 +146,7 @@ if the property is non unique. Good for by-id type queries.
 Uses a one-to-many sorted index if available.
 
 ```clojure
-(def users [{:name "Alic", :age 42}
+(def users [{:name "Alice", :age 42}
             {:name "Bob", :age 30}
             {:name "Barbara", :age 12}
             {:name "Jim", :age 83}])
@@ -204,6 +205,18 @@ in the predicate position of `group` / `identify` / `replace-by`.
 
 ```clojure
 (group :foo (pred even?))
+```
+
+#### `pk`
+
+`pk` looks up the (primary) index or key of the matched element.
+ 
+Uses a unique one-to-one hash index if one is available.
+
+```clojure 
+(pk [1,4,5,3] identity 5) ;; => 2
+(pk {:foo 42, :bar 33} identity 33) ;; => bar
+(pk [{:foo 42}, {:foo 33}] :foo 42) ;; => 0
 ```
 
 #### `pcomp`
@@ -279,7 +292,14 @@ You can lift any function into a truthy/falsey test with [pred](#pred).
 - When you query an [auto-idx](#automatically-index-your-collection-as-it-is-queried) coll on multiple threads they could race as they try to create the index. This does not introduce
   consistency issues (as they will all return the same answer), it might cause some redundant computation however. If this is important, manually index with
   [idx](#manually-index-your-collection).
- 
+
+### Benchmarks
+
+
+
+### Future work 
+
+- Could we expose specialised indexes, e.g kd, radix, b+.
 
 ## License
 

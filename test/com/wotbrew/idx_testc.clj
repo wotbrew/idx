@@ -1,4 +1,4 @@
-(ns com.wotbrew.idx-test
+(ns com.wotbrew.idx-testc
   (:require [clojure.test :refer :all])
   (:require [com.wotbrew.idx :refer :all]))
 

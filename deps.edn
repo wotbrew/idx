@@ -1,6 +1,12 @@
 {:deps {org.clojure/clojure {:mvn/version "1.10.1"}}
+ :paths ["src"]
  :aliases
- {:jar
+ {:dev
+  {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
+                org.clojure/clojurescript {:mvn/version "1.10.520"}}
+   :extra-paths ["bench" "test"]}
+
+  :jar
   {:extra-deps {seancorfield/depstar {:mvn/version "1.0.94"}}
    :main-opts ["-m" "hf.depstar.jar" "idx.jar"]}
 
