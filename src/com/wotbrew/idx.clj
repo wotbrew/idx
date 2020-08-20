@@ -1,6 +1,6 @@
 (ns com.wotbrew.idx
   (:import (clojure.lang IPersistentMap Associative ILookup IPersistentCollection Seqable Counted MapEquivalence IHashEq IFn IMeta IObj ArityException IPersistentVector IPersistentSet IPersistentStack Indexed Reversible Sequential Keyword Var Fn LazilyPersistentVector IKVReduce IReduce IReduceInit PersistentArrayMap)
-           (java.util Map$Entry Map List Set Collection RandomAccess ArrayList)))
+           (java.util Map$Entry Map List Set Collection RandomAccess)))
 
 (set! *warn-on-reflection* true)
 
@@ -741,7 +741,7 @@
 
   `:idx/unique` (for identify and replace-by calls)
   `:idx/hash (for group calls)`
-  `:idx/sorted` (for ascending/descending calls)"
+  `:idx/sort` (for ascending/descending calls)"
   ([coll] coll)
   ([coll p kind] (-add-index coll p kind))
   ([coll p kind & more]
@@ -819,7 +819,18 @@
              (reduce-kv (fn [i id _] (aset a (int i) (coll id)) (unchecked-inc-int i)) (int 0) m)
              (LazilyPersistentVector/createOwning a))
            (persistent! (transduce (map coll) conj! (transient []) (vals m)))))
-       (filterv (fn [element] (= v (-property p element))) coll)))))
+       (filterv (fn [element] (= v (-property p element))) (-elements coll))))))
+
+(defn pk-group
+  "Like group but returns you the (index/keys) of the elements rather than the elements themselves"
+  ([coll pred] (pk-group coll (-prop pred) (-val pred)))
+  ([coll p v]
+    (if (instance? Pred v)
+      (pk-group coll (pcomp (-prop v) p) (-val p))
+      (if-some [i (-get-index coll p :idx/hash)]
+        (let [m (get i v {})]
+          (vec (vals m)))
+        (map first (filter (fn [[_ element]] (= v (-property p element))) (-id-element-pairs coll)))))))
 
 (defn identify
   "Returns the unique element where the property equals v."
@@ -832,6 +843,16 @@
          (when (some? id)
            (coll id)))
        (some (fn [element] (when (= v (-property p element)) element)) (-elements coll))))))
+
+(defn pk
+  "Returns the key (index/map key) given a unique property/value pair or predicate."
+  ([coll pred] (pk coll (-prop pred) (-val pred)))
+  ([coll p v]
+   (if (instance? Pred v)
+     (identify coll (pcomp (-prop v) p) (-val v))
+     (if-some [i (-get-index coll p :idx/unique)]
+       (get i v)
+       (some (fn [[id element]] (when (= v (-property p element)) id)) (-id-element-pairs coll))))))
 
 (defn replace-by
   "Replaces an element by an alternative key."
