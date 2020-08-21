@@ -8,14 +8,14 @@
   [m p]
   (let [rf (fn [m id v]
              (let [ival (p/-property p v)]
-               (assoc! m ival (assoc (get m ival {}) id id))))]
+               (assoc! m ival (assoc (get m ival {}) id v))))]
     (persistent! (reduce-kv rf (transient {}) m))))
 
 (defn create-eq-from-elements
   [coll p]
   (let [rf (fn [m [id v]]
              (let [ival (p/-property p v)]
-               (assoc! m ival (assoc (get m ival {}) id id))))]
+               (assoc! m ival (assoc (get m ival {}) id v))))]
     (persistent! (reduce rf (transient {}) (p/-id-element-pairs coll)))))
 
 (defn create-uniq-from-associative
@@ -36,14 +36,14 @@
   [m p]
   (let [rf (fn [m id v]
              (let [ival (p/-property p v)]
-               (assoc m ival (assoc (get m ival {}) id id))))]
+               (assoc m ival (assoc (get m ival {}) id v))))]
     (reduce-kv rf (sorted-map) m)))
 
 (defn create-sorted-from-elements
   [coll p]
   (let [rf (fn [m [id v]]
              (let [ival (p/-property p v)]
-               (assoc m ival (assoc (get m ival {}) id id))))]
+               (assoc m ival (assoc (get m ival {}) id v))))]
     (reduce rf (sorted-map) (p/-id-element-pairs coll))))
 
 (defn add-eq
@@ -52,7 +52,7 @@
      (fn [eq p i]
        (let [v (p/-property p element)
              nset (get i v {})
-             nset (assoc nset id id)
+             nset (assoc nset id element)
              i (assoc i v nset)]
          (assoc eq p i)))
      eq
@@ -69,7 +69,7 @@
                  i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
                  nset (get i v {})
-                 nset (assoc nset id id)
+                 nset (assoc nset id element)
                  i (assoc i v nset)]
              (assoc eq p i)))))
      eq
@@ -129,7 +129,7 @@
      (fn [srt p i]
        (let [v (p/-property p element)
              nset (get i v {})
-             nset (assoc nset id id)
+             nset (assoc nset id element)
              i (assoc i v nset)]
          (assoc srt p i)))
      srt
@@ -146,7 +146,7 @@
                  i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
                  nset (get i v {})
-                 nset (assoc nset id id)
+                 nset (assoc nset id element)
                  i (assoc i v nset)]
              (assoc srt p i)))))
      srt

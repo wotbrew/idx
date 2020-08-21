@@ -7,7 +7,7 @@
 (defprotocol Predicate
   "You should consider this protocol an implementation detail for now."
   (-prop [this])
-  (-val [this]))
+  (-predv [this]))
 
 (defprotocol Idx
   "You should consider this protocol an implementation detail for now."

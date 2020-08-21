@@ -2,7 +2,7 @@
   (:require [com.wotbrew.impl.index :as i]
             [com.wotbrew.impl.protocols :as p]))
 
-(defrecord IndexedPersistentMap
+(deftype IndexedPersistentMap
   [m
    ^:mutable eq
    ^:mutable uniq
@@ -90,6 +90,8 @@
   (forEach [coll f]
     (doseq [[k v] coll]
       (f v k)))
+  IPrintWithWriter
+  (-pr-writer [coll writer opts] (-pr-writer m writer opts))
   ICloneable
   (-clone [_] (IndexedPersistentMap. m eq uniq sorted auto))
   IWithMeta
@@ -119,7 +121,8 @@
           (-assoc m k element)
           (some-> eq (i/add-eq k old-element element))
           (some-> uniq (i/add-uniq k old-element element))
-          (some-> sorted (i/add-sorted k old-element element))))))
+          (some-> sorted (i/add-sorted k old-element element))
+          auto))))
   IMap
   (-dissoc [coll k]
     (let [old-element (-lookup m k ::not-found)]
@@ -128,7 +131,7 @@
         (IndexedPersistentMap.
           (-dissoc m k)
           (some-> eq (i/del-eq k old-element))
-          (some-> uniq (i/del-uniq k old-element))
+          (some-> uniq (i/del-uniq old-element))
           (some-> sorted (i/del-sorted k old-element))
           auto))))
   IFind
@@ -136,8 +139,8 @@
   ISeqable
   (-seq [o] (-seq m))
   IFn
-  (-invoke [coll k] (-invoke m k))
-  (-invoke [coll k not-found] (-invoke m k not-found))
+  (-invoke [coll k] (-lookup m k))
+  (-invoke [coll k not-found] (-lookup m k not-found))
   ILookup
   (-lookup [coll k] (-lookup m k))
   (-lookup [coll k not-found] (-lookup m k not-found))
@@ -146,20 +149,19 @@
   ICollection
   (-conj [coll entry]
     (if (vector? entry)
-      (-assoc coll (-nth entry 0) (nth entry 1))
+      (-assoc coll (-nth entry 0) (-nth entry 1))
       (loop [ret coll
              es (seq entry)]
         (if (nil? es)
           ret
           (let [e (first es)]
             (if (vector? e)
-              (recur (-assoc ret (nth e 0) (-nth e 1)))
+              (recur (-assoc ret (-nth e 0) (-nth e 1)) (next es))
               (throw (js/Error. "conj on a map takes map entries or seqables of map entries"))))))))
   IKVReduce
   (-kv-reduce [coll f init] (-kv-reduce m f init))
   IReduce
   (-reduce [coll f] (-reduce m f))
-  IReduce
   (-reduce [coll f start] (-reduce m f start))
   IEquiv
   (-equiv [o other] (-equiv m other))

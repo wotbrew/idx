@@ -65,6 +65,11 @@
         idx)))
   (-elements [idx] s)
   (-id-element-pairs [idx] (map (fn [x] [x x]) s))
+  p/Wrap
+  (-wrap [this a]
+    (if (= a auto) this (p/-rewrap this a)))
+  p/Unwrap
+  (-unwrap [this] s)
   Object
   (toString [coll]
     (str s))
@@ -83,6 +88,9 @@
   (forEach [coll f]
     (doseq [[k v] coll]
       (f v k)))
+
+  IPrintWithWriter
+  (-pr-writer [coll writer opts] (-pr-writer s writer opts))
 
   ICloneable
   (-clone [_] (IndexedPersistentSet. s eq uniq sorted auto))
@@ -144,8 +152,8 @@
 
   IFn
   (-invoke [coll k]
-    (-invoke s k))
+    (-lookup s k))
   (-invoke [coll k not-found]
-    (-invoke s k not-found)))
+    (-lookup s k not-found)))
 
 (es6-iterable IndexedPersistentSet)

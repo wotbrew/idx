@@ -71,8 +71,7 @@
   p/Unwrap
   (-unwrap [this] v)
   Object
-  (toString [coll]
-    (pr-str* coll))
+  (toString [coll] (str v))
   (equiv [this other]
     (-equiv this other))
   (indexOf [coll x]
@@ -83,8 +82,12 @@
     (-lastIndexOf coll x (count coll)))
   (lastIndexOf [coll x start]
     (-lastIndexOf coll x start))
+  IPrintWithWriter
+  (-pr-writer [coll writer opts] (-pr-writer v writer opts))
   ICloneable
   (-clone [_] (IndexedPersistentVector. v eq uniq sorted auto))
+  IMeta
+  (-meta [coll] (meta v))
   IWithMeta
   (-with-meta [coll new-meta]
     (if (identical? new-meta (meta v))
@@ -142,7 +145,7 @@
     (let [old-element (-nth v i ::not-found)]
       (cond
         (identical? val old-element) coll
-        (identical? old-element ::not-found) coll
+        (identical? old-element ::not-found)
         (IndexedPersistentVector.
           (-assoc-n v i val)
           (some-> eq (i/add-eq i val))
@@ -162,8 +165,8 @@
   IKVReduce
   (-kv-reduce [coll f init] (-kv-reduce v f init))
   IFn
-  (-invoke [coll k] (-invoke v k))
-  (-invoke [coll k not-found] (-invoke v k not-found))
+  (-invoke [coll k] (-lookup v k))
+  (-invoke [coll k not-found] (-lookup v k not-found))
   IReversible
   (-rseq [coll] (-rseq v))
   IIterable

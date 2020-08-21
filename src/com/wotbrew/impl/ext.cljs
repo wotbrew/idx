@@ -22,28 +22,37 @@
   (-id-element-pairs [coll] (p/-id-element-pairs (p/-wrap coll false))))
 
 (extend-protocol p/Property
-  Fn
-  (-property [this element] (this element))
-  Var
-  (-property [this element] (this element))
-  Keyword
-  (-property [this element] (this element))
   default
   (-property [this element] (get element this))
+  function
+  (-property [this element] (this element))
   nil
-  (-property [this element] (get element nil)))
+  (-property [this element] nil)
+  Fn
+  (-property [this element] (this element))
+  Keyword
+  (-property [this element] (this element)))
 
 (extend-protocol p/Wrap
-  IMap
-  (-wrap [this auto] (imap/->IndexedPersistentMap this nil nil nil auto))
-  IVector
-  (-wrap [this auto] (ivec/->IndexedPersistentVector this nil nil nil auto))
-  ISet
-  (-wrap [this auto] (iset/->IndexedPersistentSet this nil nil nil auto))
   nil
   (-wrap [this auto] (p/-wrap [] auto))
   default
-  (-wrap [this auto] (p/-wrap (with-meta (vec this) (meta this)) auto)))
+  (-wrap [this auto] (p/-wrap (with-meta (vec this) (meta this)) auto))
+
+  PersistentArrayMap
+  (-wrap [this auto] (imap/->IndexedPersistentMap this nil nil nil auto))
+  PersistentHashMap
+  (-wrap [this auto] (imap/->IndexedPersistentMap this nil nil nil auto))
+  PersistentTreeMap
+  (-wrap [this auto] (imap/->IndexedPersistentMap this nil nil nil auto))
+  PersistentVector
+  (-wrap [this auto] (ivec/->IndexedPersistentVector this nil nil nil auto))
+  Subvec
+  (-wrap [this auto] (ivec/->IndexedPersistentVector this nil nil nil auto))
+  PersistentHashSet
+  (-wrap [this auto] (iset/->IndexedPersistentSet this nil nil nil auto))
+  PersistentTreeSet
+  (-wrap [this auto] (iset/->IndexedPersistentSet this nil nil nil auto)))
 
 (extend-protocol p/Unwrap
   nil

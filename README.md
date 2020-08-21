@@ -21,6 +21,7 @@ Supports both Clojure and ClojureScript.
 - For small n indexes are very expensive. Use it to flatten quadratic joins, do not use it to replace all sequence filtering.
 - If you index by function, that function must absolutely be pure, otherwise all bets are off. Similar to comparators and (sorted-set-by).
 - Each index uses memory, so we need to make sure we consider that. This is particularly important to think about when using automatic-indexing.
+- When indexing by function, index identity is function identity - so you must be careful with lambdas and closures.
 
 ## Why 
 
@@ -64,21 +65,21 @@ All functions are available in the `com.wotbrew.idx` namespace.
 ### Manually index your collection
 
 ```clojure
-; (idx coll p kind ...)
+; (index coll p kind ...)
 ;; e.g 
 (def coll [{:id 1, :name "fred", :created-at #inst "2018-03-14"} ...])
-(idx coll :id :idx/unique :name :idx/hash :created-at :idx/sort)
+(index coll :id :idx/unique :name :idx/hash :created-at :idx/sort)
 ;=> 
 [{:id 1, :name "fred", :created-at #inst "2018-03-14"} ...]
 ```
 
-`idx` returns a new indexed collection with the specified indexes (plus any that already existed).
+`index` returns a new indexed collection with the specified indexes (plus any that already existed).
 
 You can also later remove indexes with `delete-index`.
 
 Kind is either:
 
-- `:idx/hash` for fast `group` calls
+- `:idx/hash` for fast `lookup` calls
 - `:idx/unique` for fast `identify` / `replace-by` calls.
 - `:idx/sort` for fast `ascending` / `descending` calls.
 
@@ -88,7 +89,7 @@ the indexes will be maintained on your behalf.
 ### Automatically index your collection as it is queried.
 
 ```clojure 
-(auto-idx coll)
+(auto coll)
 ```
 
 This returns an indexed collection that creates indexes (and caches them) on demand as you query.
@@ -100,29 +101,29 @@ Caveats to this approach:
 - You could end up creating a lot of indexes, which slow down `conj`, `assoc`, `dissoc` and so on.
 - Redundant indexes take up memory, remember you can `delete-index`.
 
-You can still call `idx` on `auto-idx` collections if you want to force certain indexes ahead of time.
+You can still call `index` on `auto` collections if you want to force certain indexes ahead of time.
 
 ### Query your collection 
 
-Once wrapped with idx, a small suite of functions is available to query your collection.
+Once wrapped with `index` or `auto`, a small suite of functions is available to query your collection.
 
-#### `group`
+#### `lookup`
 
 Uses a one-to-many hash index if available.
 
-Returns vectors of (unsorted) elements. You pass a predicate or property to test and value to match.
+Returns sequences of (unsorted) elements. You pass a predicate or property to test and value to match.
 
-Say you have a vector of users, each with an age key, you might do:
+Say you have a vectorß of users, each with an age key, you might do:
 
 ```clojure 
-(group users :age 10)
+(lookup users :age 10)
 ```
 
 Say you have a vector of numbers, and you want to find the negative ones, functions are both properties and predicates.
 
 ```clojure 
 (def numbers [-1,3,4,-5])
-(group numbers neg? true)
+(lookup numbers neg? true)
 ;; => 
 [-5, -1]
 ```
@@ -161,7 +162,7 @@ Uses a one-to-many sorted index if available.
 are indexing a get-in call.
 
 ```clojure
-(group orders (path :user :id) 32344)
+(lookup orders (path :user :id) 32344)
 ```
 
 #### `match`
@@ -170,26 +171,26 @@ are indexing a get-in call.
 you do not have to redundantly respecify the structure in the value position.
 
 ```clojure
-(group numbers (match neg? true, even? true))
+(lookup numbers (match neg? true, even? true))
 ```
 
 They keys can be any property, and match nests.
 
 This allows for some pretty extensive (and expensive!) indexes, but is useful to compose 
-a couple of properties together for joins.
+a couple of properties together for composite keys.
 
 ```clojure
-(group orders (match (path :user :id) 32444,
-                     :carrier (match :country "uk" :available true)
-                     :delivery-date #"2020-08-17"))
+(lookup orders (match (path :user :id) 32444,
+                      :carrier (match :country "uk" :available true)
+                      :delivery-date #"2020-08-17"))
 ```
 
-In order to index a match, either use an `auto-idx` coll or use the `:idx/value` placeholder.
+In order to index a match, either use an `auto` coll or use the `:idx/value` placeholder.
 
 ```clojure
-(idx coll (match (path :user :id) :idx/value,
-                 :carrier (match :country :idx/value :available :idx/value)
-                 :delivery-date :idx/value))
+(index coll (match (path :user :id) :idx/value,
+                   :carrier (match :country :idx/value :available :idx/value)
+                   :delivery-date :idx/value))
 ```
 
 #### `pred`
@@ -197,14 +198,14 @@ In order to index a match, either use an `auto-idx` coll or use the `:idx/value`
 `pred` creates a predicate that uses a truthy/falsey index. It can be used in the value position of matches.
 
 ```clojure
-(match :foo (pred even?))
+(match :foo (pred :has-bar))
 ```
 
 pred is also useful to promote a function so it can be used
-in the predicate position of `group` / `identify` / `replace-by`.
+in the predicate position of `lookup` / `identify` / `replace-by`.
 
 ```clojure
-(group :foo (pred even?))
+(lookup :foo (pred even?))
 ```
 
 #### `pk`
@@ -221,7 +222,11 @@ Uses a unique one-to-one hash index if one is available.
 
 #### `pcomp`
 
-`pcomp` allows for function style composition of properties.
+`pcomp` allows for function style composition of properties, takes 2 properties and returns a property.
+
+The property returned by `(pcomp a b)`
+
+Will be looked each property in turn. `(a (b element))`
 
 ### Modify your collection
 
@@ -235,7 +240,7 @@ Some handy functions are enabled due to the presence of indexes.
 
 Replaces an element in the collection identified by the property/value or predicate.
 
-Uses a unique index if one is available (always true if you [auto-idx](#automatically-index-your-collection-as-it-is-queried))
+Uses a unique index if one is available (always true if you use [auto](#automatically-index-your-collection-as-it-is-queried))
 
 e.g 
 
@@ -254,7 +259,7 @@ with `unwrap`.
 
 #### `delete-index`
 
-Returns a new collection without the specified index(es), uses same index specification as [idx](#manually-index-your-collection)
+Returns a new collection without the specified index(es), uses same index specification as [index](#manually-index-your-collection)
 
 ```clojure 
 (delete-index coll :foo :idx/hash)
@@ -286,16 +291,89 @@ You can lift any function into a truthy/falsey test with [pred](#pred).
  
 #### Mutability 
 
-- If you use [auto-idx](#automatically-index-your-collection-as-it-is-queried) indexes are cached as you query using mutable fields. This is similar to how 
+- If you use [auto](#automatically-index-your-collection-as-it-is-queried) indexes are cached as you query using mutable fields. This is similar to how 
   clojure caches hash codes. This should have no impact on thinking of these structures as persistent as the only 
   characteristic it changes is the performance of repeated lookups. 
-- When you query an [auto-idx](#automatically-index-your-collection-as-it-is-queried) coll on multiple threads they could race as they try to create the index. This does not introduce
+- When you query an [auto](#automatically-index-your-collection-as-it-is-queried) coll on multiple threads they could race as they try to create the index. This does not introduce
   consistency issues (as they will all return the same answer), it might cause some redundant computation however. If this is important, manually index with
-  [idx](#manually-index-your-collection).
+  [index](#manually-index-your-collection).
 
-### Benchmarks
+### Benchmarks / Performance
 
+All taken on a 2015 MBP using [criterium](https://github.com/hugoduncan/criterium)'s `bench`.
 
+The performance goal is to get close enough to manual indexing speed using clojure data structures that this can replace those use cases.
+
+Of course if you are indexing with mutable (e.g java HashSet), or custom tree implementations you may well smoke both this library and anything clojure.core offers.
+
+#### Index creation
+
+Creating a :idx/hash index, indexing #(mod % 10) over 10000 integers.
+
+```
+Execution time mean : 4.079791 ms
+```                   
+
+For comparison `group-by`
+
+```
+Execution time mean : 1.973795 ms
+```
+
+So creating an index on the collection is within 2x of group-by.
+
+Creating a :idx/unique value index on 10000 integers.
+
+```
+Execution time mean : 1.314164 ms
+```
+
+Doing the same manually `(persistent! (reduce-kv #(assoc! %1 %3 %2) (transient {}) sample))`
+
+```
+Execution time mean : 1.450698 ms
+```
+
+Which is unsurprising as the code does identical work.
+
+Creating a :idx/sort index is by far the most expensive, for the same mod-10 index.
+
+``` 
+Execution time mean : 5.673653 ms
+```
+
+#### Lookups 
+
+Lookups are relatively cheap in all cases when indexes exist. When a scan is necessary performance is close or the same as to (filter). 
+
+Lookups are somewhat slower than against equivalent maps, mostly because this library needs to contend with incremental index maintenance as collections change.
+
+Looking up against a :idx/hash index.
+
+```
+Execution time mean : 125.950289 ns
+```
+
+For comparison `get` against the equivalent (group-by) map, literally just a map lookup.
+
+```
+Execution time mean : 31.939404 ns
+```
+
+Looking up against a :idx/unique index with identify.
+
+```
+Execution time mean : 127.409999 ns
+```
+
+For comparison getting from the equiv map:
+```
+Execution time mean : 51.197166 ns
+```
+
+#### Modification
+
+The cost of each index is apparent when modifying your collections, not only are transients not supported, but each write must maintain the indexes as well as the primary data structure.
 
 ### Future work 
 

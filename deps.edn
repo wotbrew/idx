@@ -3,7 +3,8 @@
  :aliases
  {:dev
   {:extra-deps {criterium/criterium {:mvn/version "0.4.6"}
-                org.clojure/clojurescript {:mvn/version "1.10.520"}}
+                org.clojure/clojurescript {:mvn/version "1.10.520"}
+                org.clojure/test.check {:mvn/version "0.10.0"}}
    :extra-paths ["bench" "test"]}
 
   :jar
