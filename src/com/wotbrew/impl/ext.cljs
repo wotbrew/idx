@@ -8,14 +8,18 @@
   p/Idx
   nil
   (-rewrap [coll auto] nil)
-  (-get-index [coll p kind] nil)
+  (-get-eq [coll p] nil)
+  (-get-uniq [coll p] nil)
+  (-get-sort [coll p] nil)
   (-del-index [coll p kind] nil)
   (-add-index [coll p kind] (-> (p/-wrap coll false) (p/-add-index p kind)))
   (-elements [coll] nil)
   (-id-element-pairs [coll] nil)
   default
   (-rewrap [coll auto] coll)
-  (-get-index [coll p kind] nil)
+  (-get-eq [coll p] nil)
+  (-get-uniq [coll p] nil)
+  (-get-sort [coll p] nil)
   (-del-index [coll p kind] coll)
   (-add-index [coll p kind] (-> (p/-wrap coll false) (p/-add-index p kind)))
   (-elements [coll] (p/-elements (p/-wrap coll false)))
