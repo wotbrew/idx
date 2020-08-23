@@ -13,21 +13,21 @@
   p/Idx
   (-rewrap [idx a] (IndexedPersistentVector. v eq uniq sorted a))
   (-get-eq [idx p]
-    (or (eq p)
+    (or (when (some? eq) (eq p))
         (when auto
           (let [i (i/create-eq-from-associative v p)
                 eq (assoc eq p i)]
             (set! (.-eq idx) eq)
             i))))
   (-get-uniq [idx p]
-    (or (uniq p)
+    (or (when (some? uniq) (uniq p))
         (when auto
           (let [i (i/create-uniq-from-associative v p)
                 uniq (assoc uniq p i)]
             (set! (.-uniq idx) uniq)
             i))))
   (-get-sort [idx p]
-    (or (sorted p)
+    (or (when (some? sorted) (sorted p))
         (when auto
           (let [i (i/create-sorted-from-associative v p)
                 sorted (assoc sorted p i)]
@@ -142,7 +142,7 @@
   (nth [this i notFound] (.nth ^Indexed v i notFound))
   IPersistentCollection
   (count [this] (.count ^IPersistentCollection v))
-  (empty [this] (IndexedPersistentVector. (.empty ^IPersistentCollection v) {} {} {} auto))
+  (empty [this] (IndexedPersistentVector. (.empty ^IPersistentCollection v) nil nil nil auto))
   (equiv [this o] (.equiv ^IPersistentCollection v o))
   IPersistentStack
   (peek [this] (.peek ^IPersistentStack v))

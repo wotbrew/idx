@@ -51,7 +51,7 @@
    (reduce-kv
      (fn [eq p i]
        (let [v (p/-property p element)
-             nset (get i v {})
+             nset (i v {})
              nset (assoc nset id element)
              i (assoc i v nset)]
          (assoc eq p i)))
@@ -64,7 +64,7 @@
              v (p/-property p element)]
          (if (identical? ov v)
            eq
-           (let [oset (get i ov {})
+           (let [oset (i ov {})
                  oset (dissoc oset id)
                  i (if (empty? oset) (dissoc i ov) (assoc i ov oset))
 
@@ -79,7 +79,7 @@
   (reduce-kv
     (fn [eq p i]
       (let [ov (p/-property p old-element)]
-        (let [oset (get i ov {})
+        (let [oset (i ov {})
               oset (dissoc oset id)
               i (if (empty? oset) (dissoc i ov) (assoc i ov oset))]
           (if (empty? i)
@@ -128,7 +128,7 @@
    (reduce-kv
      (fn [srt p i]
        (let [v (p/-property p element)
-             nset (get i v {})
+             nset (i v {})
              nset (assoc nset id element)
              i (assoc i v nset)]
          (assoc srt p i)))
@@ -156,7 +156,7 @@
   (reduce-kv
     (fn [srt p i]
       (let [ov (p/-property p old-element)]
-        (let [oset (get i ov {})
+        (let [oset (i ov {})
               oset (dissoc oset id)
               i (if (empty? oset) (dissoc i ov) (assoc i ov oset))]
           (if (empty? i)

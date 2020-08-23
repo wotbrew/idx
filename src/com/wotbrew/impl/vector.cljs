@@ -11,21 +11,21 @@
   p/Idx
   (-rewrap [idx a] (IndexedPersistentVector. v eq uniq sorted a))
   (-get-eq [idx p]
-    (or (eq p)
+    (or (when (some? eq) (eq p))
         (when auto
           (let [i (i/create-eq-from-associative v p)
                 neq (assoc eq p i)]
             (set! eq neq)
             i))))
   (-get-uniq [idx p]
-    (or (uniq p)
+    (or (when (some? uniq) (uniq p))
         (when auto
           (let [i (i/create-uniq-from-associative v p)
                 nuniq (assoc uniq p i)]
             (set! uniq nuniq)
             i))))
   (-get-sort [idx p]
-    (or (sorted p)
+    (or (when (some? sorted) (sorted p))
         (when auto
           (let [i (i/create-sorted-from-associative v p)
                 nsorted (assoc sorted p i)]
@@ -112,7 +112,7 @@
         auto)))
   IEmptyableCollection
   (-empty [coll]
-    (IndexedPersistentVector. [] {} {} {} auto))
+    (IndexedPersistentVector. (-empty v) nil nil nil auto))
   ISequential
   IEquiv
   (-equiv [coll other] (-equiv v other))

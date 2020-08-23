@@ -57,7 +57,7 @@ as a drop-in you can use to supercharge your existing collections.
 `idx` is not trying to compete with databases like [datascript](https://github.com/tonsky/datascript). It is intending to compete with a proliferation of manual `group-by`, `index-by` style calls in order 
 to find data in your collections.
  
- **Its performance should be good enough that it competes with manual indexing**.
+The performance of course is not as good as manual indexing, but should be good enough for most of the same use cases.
 
 ## Usage
 
@@ -303,9 +303,7 @@ You can lift any function into a truthy/falsey test with [pred](#pred).
 
 All taken on a 2015 MBP using `bench` from [criterium](https://github.com/hugoduncan/criterium).
 
-The performance goal is to get close enough to manual indexing speed using clojure data structures that this can replace those use cases.
-
-Of course if you are indexing with mutable (e.g java HashSet), or custom tree implementations you may well smoke both this library and anything clojure.core offers.
+The performance goal is to get close enough to manual indexing speed using clojure data structures that it is a viable solution for most normal line-of-business code.
 
 #### Index creation
 
@@ -335,7 +333,7 @@ Execution time mean : 1.450698 ms
 
 Which is unsurprising as the code does identical work.
 
-Creating a :idx/sort index is by far the most expensive, for the same mod-10 index.
+Creating a :idx/sort index is the most expensive, as shown in this benchmark for the same collection and property.
 
 ``` 
 Execution time mean : 5.673653 ms
@@ -372,7 +370,22 @@ Execution time mean : 51.197166 ns
 
 #### Modification
 
-The cost of each index is apparent when modifying your collections, not only are transients not supported, but each write must maintain the indexes as well as the primary data structure.
+Modification of indexed collections is difficult to benchmark, it depends on the number (and kind) of indexes, the properties you are testing (if functions).
+
+It will almost always be the case that maintaining an index is more expensive than maintaining the original collection. In the case of vectors, the difference is stark, as vector writes are much cheaper
+than the map writes that indexes require.
+
+Conj onto 10000 integer vector with a unique value index
+
+```
+Execution time mean : 307.481521 ns
+```
+
+For comparison, conj + manual indexing in an equivalent value to element map.
+
+``` 
+Execution time mean : 188.853768 ns
+```
 
 ### Future work 
 

@@ -12,21 +12,21 @@
   p/Idx
   (-rewrap [idx a] (IndexedPersistentMap. m eq uniq sorted a))
   (-get-eq [idx p]
-    (or (eq p)
+    (or (when (some? eq) (eq p))
         (when auto
           (let [i (i/create-eq-from-associative m p)
                 neq (assoc eq p i)]
             (set! eq neq)
             i))))
   (-get-uniq [idx p]
-    (or (uniq p)
+    (or (when (some? uniq) (uniq p))
         (when auto
           (let [i (i/create-uniq-from-associative m p)
                 nuniq (assoc uniq p i)]
             (set! uniq nuniq)
             i))))
   (-get-sort [idx p]
-    (or (sorted p)
+    (or (when (some? sorted) (sorted p))
         (when auto
           (let [i (i/create-sorted-from-associative m p)
                 nsorted (assoc sorted p i)]
@@ -141,7 +141,7 @@
   (-lookup [coll k] (-lookup m k))
   (-lookup [coll k not-found] (-lookup m k not-found))
   IEmptyableCollection
-  (-empty [coll] (IndexedPersistentMap. {} {} {} {} auto))
+  (-empty [coll] (IndexedPersistentMap. (-empty m) nil nil nil auto))
   ICollection
   (-conj [coll entry]
     (if (vector? entry)

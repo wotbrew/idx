@@ -38,4 +38,22 @@
   (let [v (idx/auto sample)]
     (c/bench (idx/identify v identity 4389)))
 
+  ;; conj 1 hash manual
+  (let [m (zipmap sample sample)]
+    (c/bench
+      (do (conj sample 2333)
+          (assoc m 2333 2333))))
+
+  ;; conj 1 hash
+  (let [v (idx/index sample identity :idx/unique)]
+    (c/bench (conj v 2333)))
+
+  ;; conj
+  (let [m1 (zipmap sample sample)]
+    (c/bench (assoc m1 10001 10001)))
+
+  ;; conj 1 hash
+  (let [m (idx/index (zipmap sample sample) identity :idx/unique)]
+    (c/bench (assoc m 10001 10001)))
+
   )

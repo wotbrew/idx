@@ -13,21 +13,21 @@
   p/Idx
   (-rewrap [idx a] (IndexedPersistentSet. s eq uniq sorted a))
   (-get-eq [idx p]
-    (or (get eq p)
+    (or (when (some? eq) (eq p))
         (when auto
           (let [i (i/create-eq-from-elements s p)
                 eq (assoc eq p i)]
             (set! (.-eq idx) eq)
             i))))
   (-get-uniq [idx p]
-    (or (get uniq p)
+    (or (when (some? uniq) (uniq p))
         (when auto
           (let [i (i/create-unique-from-elements s p)
                 uniq (assoc uniq p i)]
             (set! (.-uniq idx) uniq)
             i))))
   (-get-sort [idx p]
-    (or (get sorted p)
+    (or (when (some? sorted) (sorted p))
         (when auto
           (let [i (i/create-sorted-from-elements s p)
                 sorted (assoc sorted p i)]
@@ -119,7 +119,7 @@
           (some-> uniq (i/add-uniq o o))
           (some-> sorted (i/add-sorted o o))
           auto))))
-  (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) {} {} {} auto))
+  (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) nil nil nil auto))
   (equiv [this o] (.equiv ^IPersistentSet s o))
   Object
   (hashCode [this] (.hashCode s))

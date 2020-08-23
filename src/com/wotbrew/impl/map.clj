@@ -13,21 +13,21 @@
   p/Idx
   (-rewrap [idx a] (IndexedPersistentMap. m eq uniq sorted a))
   (-get-eq [idx p]
-    (or (eq p)
+    (or (when (some? eq) (eq p))
         (when auto
           (let [i (i/create-eq-from-associative m p)
                 eq (assoc eq p i)]
             (set! (.-eq idx) eq)
             i))))
   (-get-uniq [idx p]
-    (or (uniq p)
+    (or (when (some? uniq) (uniq p))
         (when auto
           (let [i (i/create-uniq-from-associative m p)
                 uniq (assoc uniq p i)]
             (set! (.-uniq idx) uniq)
             i))))
   (-get-sort [idx p]
-    (or (sorted p)
+    (or (when (some? sorted) (sorted p))
         (when auto
           (let [i (i/create-sorted-from-associative m p)
                 sorted (assoc sorted p i)]
@@ -152,7 +152,7 @@
           (.assoc this (.getKey e) (.getKey e)))
         this
         o)))
-  (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) {} {} {} auto))
+  (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) nil nil nil auto))
   (equiv [this o] (.equiv ^IPersistentCollection m o))
   ILookup
   (valAt [this o] (.valAt ^ILookup m o))
