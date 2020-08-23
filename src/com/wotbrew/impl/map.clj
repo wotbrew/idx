@@ -12,31 +12,27 @@
    ^boolean auto]
   p/Idx
   (-rewrap [idx a] (IndexedPersistentMap. m eq uniq sorted a))
-  (-get-index [idx p kind]
-    (case kind
-      :idx/hash
-      (or (get eq p)
-          (when auto
-            (let [i (i/create-eq-from-associative m p)
-                  eq (assoc eq p i)]
-              (set! (.-eq idx) eq)
-              i)))
-
-      :idx/unique
-      (or (get uniq p)
-          (when auto
-            (let [i (i/create-uniq-from-associative m p)
-                  uniq (assoc uniq p i)]
-              (set! (.-uniq idx) uniq)
-              i)))
-
-      :idx/sort
-      (or (get sorted p)
-          (when auto
-            (let [i (i/create-sorted-from-associative m p)
-                  sorted (assoc sorted p i)]
-              (set! (.-sorted idx) sorted)
-              i)))))
+  (-get-eq [idx p]
+    (or (eq p)
+        (when auto
+          (let [i (i/create-eq-from-associative m p)
+                eq (assoc eq p i)]
+            (set! (.-eq idx) eq)
+            i))))
+  (-get-uniq [idx p]
+    (or (uniq p)
+        (when auto
+          (let [i (i/create-uniq-from-associative m p)
+                uniq (assoc uniq p i)]
+            (set! (.-uniq idx) uniq)
+            i))))
+  (-get-sort [idx p]
+    (or (sorted p)
+        (when auto
+          (let [i (i/create-sorted-from-associative m p)
+                sorted (assoc sorted p i)]
+            (set! (.-sorted idx) sorted)
+            i))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -156,7 +152,7 @@
           (.assoc this (.getKey e) (.getKey e)))
         this
         o)))
-  (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) nil nil nil auto))
+  (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) {} {} {} auto))
   (equiv [this o] (.equiv ^IPersistentCollection m o))
   ILookup
   (valAt [this o] (.valAt ^ILookup m o))

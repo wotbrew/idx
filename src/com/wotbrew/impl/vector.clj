@@ -12,31 +12,27 @@
    ^boolean auto]
   p/Idx
   (-rewrap [idx a] (IndexedPersistentVector. v eq uniq sorted a))
-  (-get-index [idx p kind]
-    (case kind
-      :idx/hash
-      (or (get eq p)
-          (when auto
-            (let [i (i/create-eq-from-associative v p)
-                  eq (assoc eq p i)]
-              (set! (.-eq idx) eq)
-              i)))
-
-      :idx/unique
-      (or (get uniq p)
-          (when auto
-            (let [i (i/create-uniq-from-associative v p)
-                  uniq (assoc uniq p i)]
-              (set! (.-uniq idx) uniq)
-              i)))
-
-      :idx/sort
-      (or (get sorted p)
-          (when auto
-            (let [i (i/create-sorted-from-associative v p)
-                  sorted (assoc sorted p i)]
-              (set! (.-sorted idx) sorted)
-              i)))))
+  (-get-eq [idx p]
+    (or (eq p)
+        (when auto
+          (let [i (i/create-eq-from-associative v p)
+                eq (assoc eq p i)]
+            (set! (.-eq idx) eq)
+            i))))
+  (-get-uniq [idx p]
+    (or (uniq p)
+        (when auto
+          (let [i (i/create-uniq-from-associative v p)
+                uniq (assoc uniq p i)]
+            (set! (.-uniq idx) uniq)
+            i))))
+  (-get-sort [idx p]
+    (or (sorted p)
+        (when auto
+          (let [i (i/create-sorted-from-associative v p)
+                sorted (assoc sorted p i)]
+            (set! (.-sorted idx) sorted)
+            i))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -146,7 +142,7 @@
   (nth [this i notFound] (.nth ^Indexed v i notFound))
   IPersistentCollection
   (count [this] (.count ^IPersistentCollection v))
-  (empty [this] (IndexedPersistentVector. (.empty ^IPersistentCollection v) eq uniq sorted auto))
+  (empty [this] (IndexedPersistentVector. (.empty ^IPersistentCollection v) {} {} {} auto))
   (equiv [this o] (.equiv ^IPersistentCollection v o))
   IPersistentStack
   (peek [this] (.peek ^IPersistentStack v))

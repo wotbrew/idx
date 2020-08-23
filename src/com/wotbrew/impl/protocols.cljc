@@ -12,11 +12,19 @@
 (defprotocol Idx
   "You should consider this protocol an implementation detail for now."
   (-rewrap [idx auto])
-  (-get-index [idx p kind])
+  (-get-eq [idx p])
+  (-get-uniq [idx p])
+  (-get-sort [idx p])
   (-del-index [idx p kind])
   (-add-index [idx p kind])
   (-elements [idx])
   (-id-element-pairs [idx]))
+
+(defmacro -get-index [idx p kind]
+  (case kind
+    :idx/hash `(-get-eq ~idx ~p)
+    :idx/unique `(-get-uniq ~idx ~p)
+    :idx/sort `(-get-sort ~idx ~p)))
 
 (defprotocol Wrap
   "You should consider this protocol an implementation detail for now."

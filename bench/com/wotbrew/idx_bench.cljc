@@ -24,7 +24,7 @@
 
   ;; get group
   (let [g (group-by prop sample)]
-    (c/bench (g 0)))
+    (c/bench (get g 0)))
 
   ;; get
   (let [v (idx/auto sample)]
@@ -32,10 +32,10 @@
 
   ;; identify manual
   (let [g (persistent! (reduce-kv #(assoc! %1 %3 %2) (transient {}) sample))]
-    (c/bench (g 4389)))
+    (c/bench (get g 4389)))
 
   ;; get
   (let [v (idx/auto sample)]
-    (c/bench (idx/identify v value 4389)))
+    (c/bench (idx/identify v identity 4389)))
 
   )

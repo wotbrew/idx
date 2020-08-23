@@ -11,31 +11,27 @@
 
   p/Idx
   (-rewrap [idx a] (IndexedPersistentMap. m eq uniq sorted a))
-  (-get-index [idx p kind]
-    (case kind
-      :idx/hash
-      (or (get eq p)
-          (when auto
-            (let [i (i/create-eq-from-associative m p)
-                  neq (assoc eq p i)]
-              (set! eq neq)
-              i)))
-
-      :idx/unique
-      (or (get uniq p)
-          (when auto
-            (let [i (i/create-uniq-from-associative m p)
-                  nuniq (assoc uniq p i)]
-              (set! uniq nuniq)
-              i)))
-
-      :idx/sort
-      (or (get sorted p)
-          (when auto
-            (let [i (i/create-sorted-from-associative m p)
-                  nsorted (assoc sorted p i)]
-              (set! sorted nsorted)
-              i)))))
+  (-get-eq [idx p]
+    (or (eq p)
+        (when auto
+          (let [i (i/create-eq-from-associative m p)
+                neq (assoc eq p i)]
+            (set! eq neq)
+            i))))
+  (-get-uniq [idx p]
+    (or (uniq p)
+        (when auto
+          (let [i (i/create-uniq-from-associative m p)
+                nuniq (assoc uniq p i)]
+            (set! uniq nuniq)
+            i))))
+  (-get-sort [idx p]
+    (or (sorted p)
+        (when auto
+          (let [i (i/create-sorted-from-associative m p)
+                nsorted (assoc sorted p i)]
+            (set! sorted nsorted)
+            i))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -145,7 +141,7 @@
   (-lookup [coll k] (-lookup m k))
   (-lookup [coll k not-found] (-lookup m k not-found))
   IEmptyableCollection
-  (-empty [coll] (IndexedPersistentMap. {} nil nil nil auto))
+  (-empty [coll] (IndexedPersistentMap. {} {} {} {} auto))
   ICollection
   (-conj [coll entry]
     (if (vector? entry)

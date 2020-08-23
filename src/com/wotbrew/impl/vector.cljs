@@ -10,31 +10,27 @@
    auto]
   p/Idx
   (-rewrap [idx a] (IndexedPersistentVector. v eq uniq sorted a))
-  (-get-index [idx p kind]
-    (case kind
-      :idx/hash
-      (or (get eq p)
-          (when auto
-            (let [i (i/create-eq-from-associative v p)
-                  neq (assoc eq p i)]
-              (set! eq neq)
-              i)))
-
-      :idx/unique
-      (or (get uniq p)
-          (when auto
-            (let [i (i/create-uniq-from-associative v p)
-                  nuniq (assoc uniq p i)]
-              (set! uniq nuniq)
-              i)))
-
-      :idx/sort
-      (or (get sorted p)
-          (when auto
-            (let [i (i/create-sorted-from-associative v p)
-                  nsorted (assoc sorted p i)]
-              (set! sorted nsorted)
-              i)))))
+  (-get-eq [idx p]
+    (or (eq p)
+        (when auto
+          (let [i (i/create-eq-from-associative v p)
+                neq (assoc eq p i)]
+            (set! eq neq)
+            i))))
+  (-get-uniq [idx p]
+    (or (uniq p)
+        (when auto
+          (let [i (i/create-uniq-from-associative v p)
+                nuniq (assoc uniq p i)]
+            (set! uniq nuniq)
+            i))))
+  (-get-sort [idx p]
+    (or (sorted p)
+        (when auto
+          (let [i (i/create-sorted-from-associative v p)
+                nsorted (assoc sorted p i)]
+            (set! sorted nsorted)
+            i))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -116,7 +112,7 @@
         auto)))
   IEmptyableCollection
   (-empty [coll]
-    (IndexedPersistentVector. [] nil nil nil auto))
+    (IndexedPersistentVector. [] {} {} {} auto))
   ISequential
   IEquiv
   (-equiv [coll other] (-equiv v other))

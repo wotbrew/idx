@@ -12,31 +12,27 @@
    ^boolean auto]
   p/Idx
   (-rewrap [idx a] (IndexedPersistentSet. s eq uniq sorted a))
-  (-get-index [idx p kind]
-    (case kind
-      :idx/hash
-      (or (get eq p)
-          (when auto
-            (let [i (i/create-eq-from-elements s p)
-                  eq (assoc eq p i)]
-              (set! (.-eq idx) eq)
-              i)))
-
-      :idx/unique
-      (or (get uniq p)
-          (when auto
-            (let [i (i/create-unique-from-elements s p)
-                  uniq (assoc uniq p i)]
-              (set! (.-uniq idx) uniq)
-              i)))
-
-      :idx/sort
-      (or (get sorted p)
-          (when auto
-            (let [i (i/create-sorted-from-elements s p)
-                  sorted (assoc sorted p i)]
-              (set! (.-sorted idx) sorted)
-              i)))))
+  (-get-eq [idx p]
+    (or (get eq p)
+        (when auto
+          (let [i (i/create-eq-from-elements s p)
+                eq (assoc eq p i)]
+            (set! (.-eq idx) eq)
+            i))))
+  (-get-uniq [idx p]
+    (or (get uniq p)
+        (when auto
+          (let [i (i/create-unique-from-elements s p)
+                uniq (assoc uniq p i)]
+            (set! (.-uniq idx) uniq)
+            i))))
+  (-get-sort [idx p]
+    (or (get sorted p)
+        (when auto
+          (let [i (i/create-sorted-from-elements s p)
+                sorted (assoc sorted p i)]
+            (set! (.-sorted idx) sorted)
+            i))))
   (-add-index [idx p kind]
     (case kind
       :idx/hash
@@ -123,7 +119,7 @@
           (some-> uniq (i/add-uniq o o))
           (some-> sorted (i/add-sorted o o))
           auto))))
-  (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) nil nil nil auto))
+  (empty [this] (IndexedPersistentSet. (.empty ^IPersistentSet s) {} {} {} auto))
   (equiv [this o] (.equiv ^IPersistentSet s o))
   Object
   (hashCode [this] (.hashCode s))

@@ -160,7 +160,7 @@
      (lookup coll (pcomp (p/-prop v) p) (p/-predv v))
      (if-some [i (p/-get-index coll p :idx/hash)]
        (let [m (i v {})] (vals m))
-       (filter (fn [element] (= v (p/-property p element))) (p/-elements coll))))))
+       (filterv (fn [element] (= v (p/-property p element))) (p/-elements coll))))))
 
 (defn lookup-keys
   "Like lookup but returns you the index or key of the elements rather than the elements themselves"
@@ -181,8 +181,9 @@
    (if (instance? Pred v)
      (identify coll (pcomp (p/-prop v) p) (p/-predv v))
      (if-some [i (p/-get-index coll p :idx/unique)]
-       (let [id (get i v)]
-         (get coll id))
+       (if-some [id (i v)]
+         (coll id)
+         (get coll nil))
        (some (fn [element] (when (= v (p/-property p element)) element)) (p/-elements coll))))))
 
 (defn pk
@@ -192,7 +193,7 @@
    (if (instance? Pred v)
      (identify coll (pcomp (p/-prop v) p) (p/-predv v))
      (if-some [i (p/-get-index coll p :idx/unique)]
-       (get i v)
+       (i v)
        (some (fn [[id element]] (when (= v (p/-property p element)) id)) (p/-id-element-pairs coll))))))
 
 (defn replace-by

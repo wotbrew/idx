@@ -35,11 +35,11 @@
 
 (extend-protocol p/Wrap
   IPersistentMap
-  (-wrap [this auto] (imap/->IndexedPersistentMap this nil nil nil auto))
+  (-wrap [this auto] (imap/->IndexedPersistentMap this {} {} {} auto))
   IPersistentVector
-  (-wrap [this auto] (ivec/->IndexedPersistentVector this nil nil nil auto))
+  (-wrap [this auto] (ivec/->IndexedPersistentVector this {} {} {} auto))
   IPersistentSet
-  (-wrap [this auto] (iset/->IndexedPersistentSet this nil nil nil auto))
+  (-wrap [this auto] (iset/->IndexedPersistentSet this {} {} {} auto))
   nil
   (-wrap [this auto] (p/-wrap [] auto))
   Object

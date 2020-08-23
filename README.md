@@ -14,6 +14,7 @@ Supports both Clojure and ClojureScript.
 - Can choose automatic indexing, where indexes are created and cached transparently as you query the collection.
 - Indexes are maintained incrementally as you modify your collection with functions - `conj`, `assoc` and so on.
 - Query functions also work on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
+- Good for re-frame, add indexes without changing the shape of your data.
 
 ## Caveats
 
@@ -46,7 +47,7 @@ Typical solution would look like this:
 Now this case is not too egregious, however in real code it is tempting to pass your indexes between functions, introducing accidental complexity to their signatures (the args would not be there if it were not for insufficient data structures).
 If you do not do that - you are often loosing gains by not sharing them as you repeatedly construct expensive indexes.
 
-Furthermore we have to structure our code around the indexes, they are not easy to add and remove independent of the usages.
+Furthermore we often have to structure our code around the indexes, they are not easy to add and remove independent of the usages.
 
 If you are manually creating indexes and have to change your data, then you have to do that yourself. 
 
@@ -300,7 +301,7 @@ You can lift any function into a truthy/falsey test with [pred](#pred).
 
 ### Benchmarks / Performance
 
-All taken on a 2015 MBP using [criterium](https://github.com/hugoduncan/criterium)'s `bench`.
+All taken on a 2015 MBP using `bench` from [criterium](https://github.com/hugoduncan/criterium).
 
 The performance goal is to get close enough to manual indexing speed using clojure data structures that this can replace those use cases.
 
@@ -319,8 +320,6 @@ For comparison `group-by`
 ```
 Execution time mean : 1.973795 ms
 ```
-
-So creating an index on the collection is within 2x of group-by.
 
 Creating a :idx/unique value index on 10000 integers.
 
@@ -351,13 +350,13 @@ Lookups are somewhat slower than against equivalent maps, mostly because this li
 Looking up against a :idx/hash index.
 
 ```
-Execution time mean : 125.950289 ns
+Execution time mean : 118.559471 ns
 ```
 
 For comparison `get` against the equivalent (group-by) map, literally just a map lookup.
 
 ```
-Execution time mean : 31.939404 ns
+Execution time mean : 43.276000 ns
 ```
 
 Looking up against a :idx/unique index with identify.
