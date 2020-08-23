@@ -20,11 +20,11 @@
   (-elements [idx])
   (-id-element-pairs [idx]))
 
-(defmacro -get-index [idx p kind]
+(defn -get-index [idx p kind]
   (case kind
-    :idx/hash `(-get-eq ~idx ~p)
-    :idx/unique `(-get-uniq ~idx ~p)
-    :idx/sort `(-get-sort ~idx ~p)))
+    :idx/hash (-get-eq idx p)
+    :idx/unique (-get-uniq idx p)
+    :idx/sort (-get-sort idx p)))
 
 (defprotocol Wrap
   "You should consider this protocol an implementation detail for now."

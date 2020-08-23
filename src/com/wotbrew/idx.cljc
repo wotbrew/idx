@@ -2,9 +2,7 @@
   "Provides secondary index support for clojure data structures."
   (:require [com.wotbrew.impl.ext]
             [com.wotbrew.impl.protocols :as p]
-            [com.wotbrew.impl.index :as i])
-  (:import (clojure.lang RT APersistentMap$ValSeq)
-           (java.util Map)))
+            [com.wotbrew.impl.index :as i]))
 
 (defn auto
   "Takes a set, vector or map and wraps it so that its elements support indexed queries.
@@ -158,7 +156,7 @@
   ([coll p v]
    (if (instance? Pred v)
      (lookup coll (pcomp (p/-prop v) p) (p/-predv v))
-     (if-some [i (p/-get-index coll p :idx/hash)]
+     (if-some [i (p/-get-eq coll p)]
        (let [m (i v {})] (vals m))
        (filterv (fn [element] (= v (p/-property p element))) (p/-elements coll))))))
 
@@ -168,7 +166,7 @@
   ([coll p v]
    (if (instance? Pred v)
      (lookup-keys coll (pcomp (p/-prop v) p) (p/-predv p))
-     (if-some [i (p/-get-index coll p :idx/hash)]
+     (if-some [i (p/-get-eq coll p)]
        (let [m (i v {})] (keys m))
        (map first (filter (fn [[_ element]] (= v (p/-property p element))) (p/-id-element-pairs coll)))))))
 
@@ -180,7 +178,7 @@
   ([coll p v]
    (if (instance? Pred v)
      (identify coll (pcomp (p/-prop v) p) (p/-predv v))
-     (if-some [i (p/-get-index coll p :idx/unique)]
+     (if-some [i (p/-get-uniq coll p)]
        (if-some [id (i v)]
          (coll id)
          (get coll nil))
@@ -192,7 +190,7 @@
   ([coll p v]
    (if (instance? Pred v)
      (identify coll (pcomp (p/-prop v) p) (p/-predv v))
-     (if-some [i (p/-get-index coll p :idx/unique)]
+     (if-some [i (p/-get-uniq coll p)]
        (i v)
        (some (fn [[id element]] (when (= v (p/-property p element)) id)) (p/-id-element-pairs coll))))))
 
@@ -209,7 +207,7 @@
   ([coll p v element]
    (if (instance? Pred v)
      (replace-by coll (pcomp (p/-prop v) p) (p/-predv v) element)
-     (if-some [i (p/-get-index coll p :idx/unique)]
+     (if-some [i (p/-get-uniq coll p)]
        (let [id (get i v)]
          (if (associative? coll)
            (assoc coll id element)
@@ -226,7 +224,7 @@
 
   This is much like subseq in clojure.core."
   [coll p test v]
-  (let [i (p/-get-index coll p :idx/sort)
+  (let [i (p/-get-sort coll p)
         i (or i (i/create-sorted-from-elements (p/-elements coll) p))]
     (if (some? i)
       (->> (subseq i test v)
@@ -240,7 +238,7 @@
 
   This is much like rsubseq in clojure.core."
   [coll p test v]
-  (let [i (p/-get-index coll p :idx/sort)
+  (let [i (p/-get-sort coll p)
         i (or i (i/create-sorted-from-elements (p/-elements coll) p))]
     (if (some? i)
       (->> (rsubseq i test v)

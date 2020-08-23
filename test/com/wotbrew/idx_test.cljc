@@ -1,7 +1,8 @@
 (ns com.wotbrew.idx-test
   (:require [clojure.test :refer [deftest is]]
             [com.wotbrew.idx :refer [lookup unwrap auto identify pred match index path replace-by as-key]]
-            [com.wotbrew.impl.protocols :as p]))
+            [com.wotbrew.impl.protocols :as p]
+            [clojure.test.check.generators :as gen]))
 
 (deftest indexed-vector-test
   (let [v (vec (range 100))]
@@ -105,3 +106,6 @@
 (deftest replace-by-test
   (is (= [42 43] (replace-by [41 43] identity 41 42)))
   (is (= [42 43] (replace-by (auto [41 43]) identity 41 42))))
+
+(comment
+  (clojure.test/run-tests))
