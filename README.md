@@ -30,9 +30,9 @@ lein `[com.wotbrew/idx "0.1.0"]` or deps `com.wotbrew/idx {:mvn/version "0.1.0"}
 - Index elements on demand by any property, such as clojure functions, keywords, paths, or composites thereof. See [reference](#properties)
 - Can choose automatic indexing, where indexes are created and cached transparently as you query the collection.
 - Indexes are maintained incrementally as you modify your collection with functions - `conj`, `assoc` and so on.
+- Supports composite, nested, unique and sorted indexes.
 - Query functions also work on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
 - Good for re-frame, add indexes without changing the shape of your data.
-- Hash, sorted and unique indexes available
 
 ## Caveats
 
