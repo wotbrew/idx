@@ -182,7 +182,7 @@
        (if-some [id (i v)]
          (coll id)
          (get coll nil))
-       (some (fn [element] (when (= v (p/-property p element)) element)) (p/-elements coll))))))
+       (reduce (fn [_ element] (when (= v (p/-property p element)) (reduced element))) nil (p/-elements coll))))))
 
 (defn pk
   "Returns the key (index/map key) given a unique property/value pair or predicate."
@@ -192,7 +192,7 @@
      (identify coll (pcomp (p/-prop v) p) (p/-predv v))
      (if-some [i (p/-get-uniq coll p)]
        (i v)
-       (some (fn [[id element]] (when (= v (p/-property p element)) id)) (p/-id-element-pairs coll))))))
+       (reduce (fn [_ [id element]] (when (= v (p/-property p element)) (reduced id))) nil (p/-id-element-pairs coll))))))
 
 (defn replace-by
   "Replaces an element by an alternative key.
@@ -212,7 +212,7 @@
          (if (associative? coll)
            (assoc coll id element)
            (-> coll (disj id) (conj element))))
-       (let [id (some (fn [[id element]] (when (= v (p/-property p element)) id)) (p/-id-element-pairs coll))]
+       (let [id (reduce (fn [_ [id element]] (when (= v (p/-property p element)) (reduced id))) nil (p/-id-element-pairs coll))]
          (if (associative? coll)
            (assoc coll id element)
            (-> coll (disj id) (conj element))))))))
