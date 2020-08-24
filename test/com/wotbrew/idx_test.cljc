@@ -109,6 +109,24 @@
   (is (= [42 43] (replace-by [41 43] identity 41 42)))
   (is (= [42 43] (replace-by (auto [41 43]) identity 41 42))))
 
+(deftest ascending-test
+  (is (= [0 1 2] (ascending [0 1 2 3] identity < 3)))
+  (is (= [0 1 2] (ascending (auto [0 1 2 3]) identity < 3)))
+  (is (= [0 1 2] (ascending #{0 1 2 3} identity < 3)))
+  (is (= [0 1 2] (ascending (auto #{0 1 2 3}) identity < 3)))
+  (is (= [0 1 2] (ascending {:foo 0 :bar 1 :baz 2 :qux 3} identity < 3)))
+  (is (= [0 1 2] (ascending (auto {:foo 0 :bar 1 :baz 2 :qux 3}) identity < 3))))
+
+(deftest descending-test
+  (is (= [2 1 0] (descending [0 1 2 3] identity < 3)))
+  (is (= [2 1 0] (descending (auto [0 1 2 3]) identity < 3)))
+  (is (= [2 1 0] (descending #{0 1 2 3} identity < 3)))
+  (is (= [2 1 0] (descending (auto #{0 1 2 3}) identity < 3)))
+  (is (= [2 1 0] (descending {:foo 0, :bar 1, :baz 2 :qux 3} identity < 3)))
+  (is (= [2 1 0] (descending (auto {:foo 0, :bar 1, :baz 2 :qux 3}) identity < 3))))
+
+;; properties
+
 (def index-pair
   (gen/elements
     [[identity :idx/hash]
@@ -134,46 +152,48 @@
        (= (str v1) (str v2))
        (= (pr-str v1) (pr-str v2))))
 
-(def vec-equality-holds-through-conj
-  (prop/for-all [v (gen/vector gen/any-printable-equatable)
-                 e gen/any-printable-equatable
-                 indexes (gen/vector index-pair)]
-    (same-vec? (conj v e) (conj (apply index v (mapcat identity indexes)) e))))
+(def vec-props
+  {:vec-equality-holds-through-conj
+   (prop/for-all [v (gen/vector gen/any-printable-equatable)
+                  e gen/any-printable-equatable
+                  indexes (gen/vector index-pair)]
+     (same-vec? (conj v e) (conj (apply index v (mapcat identity indexes)) e)))
 
-(def vec-equality-holds-through-pop
-  (prop/for-all [v (gen/vector gen/any-printable-equatable 1 100)
-                 indexes (gen/vector index-pair)]
-    (same-vec? (pop v) (pop (apply index v (mapcat identity indexes))))))
 
-(def vec-equality-holds-through-assoc
-  (prop/for-all [[i v] i-vec-pair
-                 e gen/any-printable-equatable
-                 indexes (gen/vector index-pair)]
-    (same-vec? (assoc v i e) (assoc (apply index v (mapcat identity indexes)) i e))))
+   :vec-equality-holds-through-pop
+   (prop/for-all [v (gen/vector gen/any-printable-equatable 1 100)
+                  indexes (gen/vector index-pair)]
+     (same-vec? (pop v) (pop (apply index v (mapcat identity indexes)))))
 
-(def vec-identity-lookup-equality
-  (prop/for-all [v (gen/vector gen/any-printable-equatable)
-                 e gen/any-printable-equatable]
-    (let [v (index v identity :idx/unique)
-          v (conj v e)]
-      (is (= e (identify v identity e))))))
+   :vec-equality-holds-through-assoc
+   (prop/for-all [[i v] i-vec-pair
+                  e gen/any-printable-equatable
+                  indexes (gen/vector index-pair)]
+     (same-vec? (assoc v i e) (assoc (apply index v (mapcat identity indexes)) i e)))
 
-(def vec-hash-membership
-  (prop/for-all [v (gen/vector gen/any-printable-equatable)
-                 e gen/any-printable-equatable]
-    (let [v (index v hash :idx/hash)
-          v (conj v e)]
-      (is (contains? (set (lookup v hash (hash e))) e)))))
+   :vec-identity-lookup-equality
+   (prop/for-all [v (gen/vector gen/any-printable-equatable)
+                  e gen/any-printable-equatable]
+     (let [v (index v identity :idx/unique)
+           v (conj v e)]
+       (is (= e (identify v identity e)))))
 
-(def vec-ascending-same-as-sort
-  (prop/for-all [v (gen/vector gen/pos-int)]
-    (let [v (index v identity :idx/sort)]
-      (is (= (sort v) (ascending v identity >= 0))))))
+   :vec-hash-membership
+   (prop/for-all [v (gen/vector gen/any-printable-equatable)
+                  e gen/any-printable-equatable]
+     (let [v (index v hash :idx/hash)
+           v (conj v e)]
+       (is (contains? (set (lookup v hash (hash e))) e))))
 
-(def vec-descending-same-as-reverse-sort
-  (prop/for-all [v (gen/vector gen/pos-int)]
-    (let [v (index v identity :idx/sort)]
-      (is (= (reverse (sort v)) (descending v identity >= 0))))))
+   :vec-ascending-same-as-sort
+   (prop/for-all [v (gen/vector gen/pos-int)]
+     (let [v (index v identity :idx/sort)]
+       (is (= (sort v) (ascending v identity >= 0)))))
+
+   :vec-descending-same-as-reverse-sort
+   (prop/for-all [v (gen/vector gen/pos-int)]
+     (let [v (index v identity :idx/sort)]
+       (is (= (reverse (sort v)) (descending v identity >= 0)))))})
 
 ;; maps
 
@@ -194,48 +214,48 @@
        (= (str v1) (str v2))
        (= (pr-str v1) (pr-str v2))))
 
-(def map-equality-holds-through-conj
-  (prop/for-all [m (gen/map gen/any-printable-equatable gen/any-printable-equatable)
-                 k gen/any-printable-equatable
-                 v gen/any-printable-equatable
-                 indexes (gen/vector index-pair)]
-    (same-map? (conj m {k v}) (conj (apply index m (mapcat identity indexes)) {k v}))))
+(def map-props
+  {:map-equality-holds-through-conj
+   (prop/for-all [m (gen/map gen/any-printable-equatable gen/any-printable-equatable)
+                  k gen/any-printable-equatable
+                  v gen/any-printable-equatable
+                  indexes (gen/vector index-pair)]
+     (same-map? (conj m {k v}) (conj (apply index m (mapcat identity indexes)) {k v})))
 
-(def map-equality-holds-through-dissoc
-  (prop/for-all [[k m] key-map-pair
-                 indexes (gen/vector index-pair)]
-    (same-map? (dissoc m k) (dissoc (apply index m (mapcat identity indexes)) k))))
+   :map-equality-holds-through-dissoc
+   (prop/for-all [[k m] key-map-pair
+                  indexes (gen/vector index-pair)]
+     (same-map? (dissoc m k) (dissoc (apply index m (mapcat identity indexes)) k)))
 
-(def map-equality-holds-through-assoc
-  (prop/for-all [[k m] key-map-pair
-                 e gen/any-printable-equatable
-                 indexes (gen/vector index-pair)]
-    (same-map? (assoc m k e) (assoc (apply index m (mapcat identity indexes)) k e))))
+   :map-equality-holds-through-assoc
+   (prop/for-all [[k m] key-map-pair
+                  e gen/any-printable-equatable
+                  indexes (gen/vector index-pair)]
+     (same-map? (assoc m k e) (assoc (apply index m (mapcat identity indexes)) k e)))
 
-(def map-identity-lookup-equality
-  (prop/for-all [m (gen/map gen/any-printable-equatable gen/any-printable-equatable)
-                 e gen/any-printable-equatable]
-    (let [m (index m identity :idx/unique)
-          m (conj m {e e})]
-      (is (= e (identify m identity e))))))
+   :map-identity-lookup-equality
+   (prop/for-all [m (gen/map gen/any-printable-equatable gen/any-printable-equatable)
+                  e gen/any-printable-equatable]
+     (let [m (index m identity :idx/unique)
+           m (conj m {e e})]
+       (is (= e (identify m identity e)))))
 
-(def map-hash-membership
-  (prop/for-all [m (gen/map gen/any-printable-equatable gen/any-printable-equatable)
-                 e gen/any-printable-equatable]
-    (let [m (index m hash :idx/hash)
-          m (conj m {e e})]
-      (is (contains? (set (lookup m hash (hash e))) e)))))
+   :map-hash-membership
+   (prop/for-all [m (gen/map gen/any-printable-equatable gen/any-printable-equatable)
+                  e gen/any-printable-equatable]
+     (let [m (index m hash :idx/hash)
+           m (conj m {e e})]
+       (is (contains? (set (lookup m hash (hash e))) e))))
 
-(def map-ascending-same-as-sort
-  (prop/for-all [m (gen/map gen/any-printable-equatable gen/pos-int)]
-    (let [m (index m identity :idx/sort)]
-      (is (= (sort (vals m)) (ascending m identity >= 0))))))
+   :map-ascending-same-as-sort
+   (prop/for-all [m (gen/map gen/any-printable-equatable gen/pos-int)]
+     (let [m (index m identity :idx/sort)]
+       (is (= (sort (vals m)) (ascending m identity >= 0)))))
 
-(def map-descending-same-as-reverse-sort
-  (prop/for-all [m (gen/map gen/any-printable-equatable gen/pos-int)]
-    (let [m (index m identity :idx/sort)]
-      (is (= (reverse (sort (vals m))) (descending m identity >= 0))))))
-
+   :map-descending-same-as-reverse-sort
+   (prop/for-all [m (gen/map gen/any-printable-equatable gen/pos-int)]
+     (let [m (index m identity :idx/sort)]
+       (is (= (reverse (sort (vals m))) (descending m identity >= 0)))))})
 
 (def key-set-pair
   (gen/bind
@@ -254,79 +274,53 @@
        (= (str v1) (str v2))
        (= (pr-str v1) (pr-str v2))))
 
-(def set-equality-holds-through-conj
-  (prop/for-all [s (gen/set gen/any-printable-equatable)
-                 v gen/any-printable-equatable
-                 indexes (gen/vector index-pair)]
-    (same-map? (conj s v) (conj (apply index s (mapcat identity indexes)) v))))
+(def set-props
+  {:set-equality-holds-through-conj
+   (prop/for-all [s (gen/set gen/any-printable-equatable)
+                  v gen/any-printable-equatable
+                  indexes (gen/vector index-pair)]
+     (same-set? (conj s v) (conj (apply index s (mapcat identity indexes)) v)))
 
-(def set-equality-holds-through-disj
-  (prop/for-all [[k s] key-set-pair
-                 indexes (gen/vector index-pair)]
-    (same-map? (disj s k) (disj (apply index s (mapcat identity indexes)) k))))
+   :set-equality-holds-through-disj
+   (prop/for-all [[k s] key-set-pair
+                  indexes (gen/vector index-pair)]
+     (same-set? (disj s k) (disj (apply index s (mapcat identity indexes)) k)))
 
-(def set-identity-lookup-equality
-  (prop/for-all [s (gen/set gen/any-printable-equatable)
-                 e gen/any-printable-equatable]
-    (let [m (index s identity :idx/unique)
-          m (conj s e)]
-      (is (= e (identify m identity e))))))
+   :set-identity-lookup-equality
+   (prop/for-all [s (gen/set gen/any-printable-equatable)
+                  e gen/any-printable-equatable]
+     (let [m (index s identity :idx/unique)
+           m (conj s e)]
+       (is (= e (identify m identity e)))))
 
-(def set-hash-membership
-  (prop/for-all [s (gen/set gen/any-printable-equatable)
-                 e gen/any-printable-equatable]
-    (let [s (index s hash :idx/hash)
-          s (conj s e)]
-      (is (contains? (set (lookup s hash (hash e))) e)))))
+   :set-hash-membership
+   (prop/for-all [s (gen/set gen/any-printable-equatable)
+                  e gen/any-printable-equatable]
+     (let [s (index s hash :idx/hash)
+           s (conj s e)]
+       (is (contains? (set (lookup s hash (hash e))) e))))
 
-(def set-ascending-same-as-sort
-  (prop/for-all [s (gen/set gen/pos-int)]
-    (let [s (index s identity :idx/sort)]
-      (is (= (sort s) (ascending s identity >= 0))))))
+   :set-ascending-same-as-sort
+   (prop/for-all [s (gen/set gen/pos-int)]
+     (let [s (index s identity :idx/sort)]
+       (is (= (sort s) (ascending s identity >= 0)))))
 
-(def set-descending-same-as-reverse-sort
-  (prop/for-all [s (gen/set gen/pos-int)]
-    (let [s (index s identity :idx/sort)]
-      (is (= (reverse (sort s)) (descending s identity >= 0))))))
-
+   :set-descending-same-as-reverse-sort
+   (prop/for-all [s (gen/set gen/pos-int)]
+     (let [s (index s identity :idx/sort)]
+       (is (= (reverse (sort s)) (descending s identity >= 0)))))})
 
 (comment
   (clojure.test/run-tests)
 
-  (let [vec-props
-        '[{:p vec-equality-holds-through-conj}
-          {:p vec-equality-holds-through-pop}
-          {:p vec-equality-holds-through-assoc}
-          {:p vec-identity-lookup-equality}
-          {:p vec-hash-membership}
-          {:p vec-ascending-same-as-sort}
-          {:p vec-descending-same-as-reverse-sort}]
-
-        map-props
-        '[{:p map-equality-holds-through-assoc}
-          {:p map-equality-holds-through-conj}
-          {:p map-equality-holds-through-dissoc}
-          {:p map-identity-lookup-equality}
-          {:p map-hash-membership}
-          {:p map-ascending-same-as-sort}
-          {:p map-descending-same-as-reverse-sort}]
-
-        set-props
-        '[{:p set-equality-holds-through-conj}
-          {:p set-equality-holds-through-disj}
-          {:p set-hash-membership}
-          {:p set-identity-lookup-equality}
-          {:p set-ascending-same-as-sort}
-          {:p set-descending-same-as-reverse-sort}]
-
-        noop-idx false
+  (let [noop-idx true
         ntests 100]
 
     (with-redefs [index (if noop-idx (fn [c & args] c) index)]
-      (doseq [prop (concat vec-props
-                           map-props
-                           set-props)]
-        (println "Testing property" (:p prop))
+      (doseq [[k prop] (concat #_vec-props
+                               #_map-props
+                               set-props)]
+        (println "Testing property" (name k))
         (println "=>")
-        (prn (tc/quick-check ntests @(resolve (:p prop))))
+        (prn (tc/quick-check ntests prop))
         (println "")))))
