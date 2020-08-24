@@ -12,8 +12,8 @@ Supports both Clojure and ClojureScript.
 (def indexed-vector (idx/auto [{:name "fred"} {:name "ethel"}]))
 
 indexed-vector
-;; => 
-[{:name "fred"} {:name "ethel"}]
+;; =>
+[{:name "fred"} {:name "ethel"}] ; the indexed structure will behave (and be printed!) like the original collection.
 
 (idx/lookup indexed-vector :name "ethel")
 ;; =>
