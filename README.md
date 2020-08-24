@@ -7,6 +7,23 @@ alternative fast access paths to their elements.
 
 Supports both Clojure and ClojureScript.
 
+```clojure
+(require '[com.wotbrew.idx :as idx])
+(def indexed-vector (idx/auto [{:name "fred"} {:name "ethel"}]))
+
+indexed-vector
+;; => 
+[{:name "fred"} {:name "ethel"}]
+
+(idx/lookup indexed-vector :name "ethel")
+;; =>
+({:name "ethel"})
+```
+
+## Latest version
+
+lein `[com.wotbrew/idx "0.1.0"]` or deps `com.wotbrew/idx {:mvn/version "0.1.0"}`.
+
 ## Features
 
 - Wrappers for vectors, sets and maps.
@@ -389,7 +406,7 @@ Execution time mean : 188.853768 ns
 
 ### Future work 
 
-- Could we expose specialised indexes, e.g kd, radix, b+.
+- Could we expose specialised indexes, e.g kd, radix, b+
 
 ## License
 
