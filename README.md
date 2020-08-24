@@ -32,6 +32,7 @@ lein `[com.wotbrew/idx "0.1.0"]` or deps `com.wotbrew/idx {:mvn/version "0.1.0"}
 - Indexes are maintained incrementally as you modify your collection with functions - `conj`, `assoc` and so on.
 - Query functions also work on normal collections so you can 'upgrade' them with indexes when you profile and find where you need them.
 - Good for re-frame, add indexes without changing the shape of your data.
+- Hash, sorted and unique indexes available
 
 ## Caveats
 
@@ -48,7 +49,7 @@ is you use `group-by` or write some code to transform your collection into some 
 
 There are 3 problems that `idx` tries to solve:
 
-- proliferation of `-by-this` or `by-that` type locals (or worse args, or keys) that only serve as fast paths to your actual data.
+- proliferation of `-by-this` or `-by-that` type locals (or worse args, or keys) that only serve as fast paths to your actual data.
 - allowing for profiler driven optimisation without massively restructuring the code.
 - index invalidation as data changes
 
