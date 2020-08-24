@@ -1,8 +1,8 @@
 (ns com.wotbrew.idx
   "Provides secondary index support for clojure data structures."
-  (:require [com.wotbrew.impl.ext]
-            [com.wotbrew.impl.protocols :as p]
-            [com.wotbrew.impl.index :as i]))
+  (:require [com.wotbrew.idx.impl.ext]
+            [com.wotbrew.idx.impl.protocols :as p]
+            [com.wotbrew.idx.impl.index :as i]))
 
 (defn auto
   "Takes a set, vector or map and wraps it so that its elements support indexed queries.

@@ -1,7 +1,7 @@
 (ns com.wotbrew.idx-test
   (:require [clojure.test :refer [deftest is]]
             [com.wotbrew.idx :refer [lookup unwrap auto identify pred match index path replace-by as-key ascending descending]]
-            [com.wotbrew.impl.protocols :as p]
+            [com.wotbrew.idx.impl.protocols :as p]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.test.check :as tc]))

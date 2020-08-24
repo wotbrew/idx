@@ -1,6 +1,6 @@
-(ns com.wotbrew.impl.map
-  (:require [com.wotbrew.impl.index :as i]
-            [com.wotbrew.impl.protocols :as p]))
+(ns com.wotbrew.idx.impl.map
+  (:require [com.wotbrew.idx.impl.index :as i]
+            [com.wotbrew.idx.impl.protocols :as p]))
 
 (deftype IndexedPersistentMap
   [m

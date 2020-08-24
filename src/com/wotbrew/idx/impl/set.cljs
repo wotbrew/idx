@@ -1,6 +1,6 @@
-(ns com.wotbrew.impl.set
-  (:require [com.wotbrew.impl.protocols :as p]
-            [com.wotbrew.impl.index :as i]))
+(ns com.wotbrew.idx.impl.set
+  (:require [com.wotbrew.idx.impl.protocols :as p]
+            [com.wotbrew.idx.impl.index :as i]))
 
 (deftype IndexedPersistentSet
   [s

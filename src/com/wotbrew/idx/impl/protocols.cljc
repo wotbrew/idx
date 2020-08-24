@@ -1,4 +1,4 @@
-(ns com.wotbrew.impl.protocols)
+(ns com.wotbrew.idx.impl.protocols)
 
 (defprotocol Property
   "You should consider this protocol an implementation detail for now."

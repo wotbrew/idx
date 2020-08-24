@@ -1,5 +1,5 @@
-(ns com.wotbrew.impl.index
-  (:require [com.wotbrew.impl.protocols :as p]))
+(ns com.wotbrew.idx.impl.index
+  (:require [com.wotbrew.idx.impl.protocols :as p]))
 
 ;; for eq/sorted leaves we use maps rather than sets so
 ;; we get the PersistentArrayMap optimisation when small.

@@ -1,6 +1,6 @@
-(ns com.wotbrew.impl.vector
-  (:require [com.wotbrew.impl.protocols :as p]
-            [com.wotbrew.impl.index :as i])
+(ns com.wotbrew.idx.impl.vector
+  (:require [com.wotbrew.idx.impl.protocols :as p]
+            [com.wotbrew.idx.impl.index :as i])
   (:import (java.util RandomAccess List)
            (clojure.lang IHashEq Counted IObj IMeta IPersistentVector Seqable Reversible Indexed IPersistentCollection IPersistentStack ILookup Associative IFn Sequential ArityException IReduceInit IKVReduce)))
 
