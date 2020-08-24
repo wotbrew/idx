@@ -144,7 +144,7 @@ Say you have a vector of numbers, and you want to find the negative ones, functi
 (def numbers [-1,3,4,-5])
 (lookup numbers neg? true)
 ;; => 
-[-5, -1]
+(-5, -1)
 ```
 
 #### `identify`
@@ -171,8 +171,13 @@ Uses a one-to-many sorted index if available.
             {:name "Barbara", :age 12}
             {:name "Jim", :age 83}])
 
-(ascending users :age > 30) ;; ascending sort
-(descending users :age <= 30) ;; descending sort
+(ascending users :age > 30) ; ascending sort
+;; =>
+({:name "Alice", :age 42}, {:name "Jim", :age 83})
+
+(descending users :age <= 30) ; descending sort
+;; =>
+({:name "Bob", :age 30}, {:name "Barbara", :age 12})
 ```
 
 #### `path`
