@@ -130,7 +130,7 @@ Once wrapped with `index` or `auto`, a small suite of functions is available to 
 
 Uses a one-to-many hash index if available.
 
-Returns sequences of (unsorted) elements. You pass a predicate or property to test and value to match.
+Returns sequences of (unsorted) elements. You pass a property to test and value to match.
 
 Say you have a vector of users, each with an age key, you might do:
 
@@ -138,7 +138,7 @@ Say you have a vector of users, each with an age key, you might do:
 (lookup users :age 10)
 ```
 
-Say you have a vector of numbers, and you want to find the negative ones, functions are both properties and predicates.
+Say you have a vector of numbers, and you want to find the negative ones, functions are properties.
 
 ```clojure 
 (def numbers [-1,3,4,-5])
