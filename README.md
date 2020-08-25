@@ -2,7 +2,7 @@
 
 _`idx` lets you treat your collection like a database_.
 
-This library provides clojure(script) data structures (maps, sets and vectors) that allow for secondary indexes. Providing 
+This library provides clojure(script) data structures (maps, sets and vectors) that allow for secondary indexes. The indexes offer 
 alternative fast access paths to their elements.
 
 Supports both Clojure and ClojureScript.
@@ -132,7 +132,7 @@ Uses a one-to-many hash index if available.
 
 Returns sequences of (unsorted) elements. You pass a predicate or property to test and value to match.
 
-Say you have a vectorß of users, each with an age key, you might do:
+Say you have a vector of users, each with an age key, you might do:
 
 ```clojure 
 (lookup users :age 10)
