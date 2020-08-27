@@ -105,7 +105,7 @@
     (let [old-element (-lookup m k ::not-found)]
       (cond
         (identical? element old-element) coll
-        (identical? old-element ::not-found)
+        (= ::not-found old-element)
         (IndexedPersistentMap.
           (-assoc m k element)
           (some-> eq (i/add-eq k element))
@@ -122,7 +122,7 @@
   IMap
   (-dissoc [coll k]
     (let [old-element (-lookup m k ::not-found)]
-      (if (identical? ::not-found old-element)
+      (if (= ::not-found old-element)
         coll
         (IndexedPersistentMap.
           (-dissoc m k)

@@ -141,7 +141,7 @@
     (let [old-element (-nth v i ::not-found)]
       (cond
         (identical? val old-element) coll
-        (identical? old-element ::not-found)
+        (= ::not-found old-element)
         (IndexedPersistentVector.
           (-assoc-n v i val)
           (some-> eq (i/add-eq i val))

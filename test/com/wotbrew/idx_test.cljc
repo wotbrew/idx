@@ -317,10 +317,12 @@
         ntests 100]
 
     (with-redefs [index (if noop-idx (fn [c & args] c) index)]
-      (doseq [[k prop] (concat #_vec-props
-                               #_map-props
+      (doseq [[k prop] (concat vec-props
+                               map-props
                                set-props)]
         (println "Testing property" (name k))
         (println "=>")
         (prn (tc/quick-check ntests prop))
-        (println "")))))
+        (println ""))))
+
+  )
