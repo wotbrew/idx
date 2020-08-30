@@ -84,7 +84,7 @@
   (isEmpty [this] (.isEmpty ^Set s))
   (iterator [this] (.iterator ^Set s))
   (toArray [this] (.toArray ^Set s))
-  (toArray [this a] (.toArray ^Set s a))
+  (^objects toArray [this ^objects a] (.toArray ^Set s a))
   (add [this e] (throw (UnsupportedOperationException.)))
   (remove [this o] (throw (UnsupportedOperationException.)))
   (containsAll [this p] (.containsAll ^Set s p))

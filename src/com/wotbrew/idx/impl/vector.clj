@@ -78,7 +78,7 @@
   (isEmpty [this] (.isEmpty ^List v))
   (contains [this o] (.contains ^List v o))
   (toArray [this] (.toArray ^List v))
-  (toArray [this a] (.toArray ^List v a))
+  (^objects toArray [this ^objects a] (.toArray ^List v a))
   (add [this o] (throw (UnsupportedOperationException.)))
   (^boolean remove [this ^Object o] (throw (UnsupportedOperationException.)))
   (^Object remove [this ^int o] (throw (UnsupportedOperationException.)))
