@@ -128,6 +128,9 @@
 (deftest conj-on-map-entry-test
   (is (= {42 43} (conj (auto {}) (first {42 43})))))
 
+(deftest conj-on-seq-of-entries-test
+  (is (= {42 43, 43 45} (conj (auto {}) (seq {42 43, 43 45})))))
+
 ;; properties
 
 (def index-pair

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Fixed .cons with maps in sequences of entries using the key as the value! 
+
 ## 0.1.2
 
 - Fixed .cons with map entries in clj using the key as the value! 

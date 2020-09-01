@@ -149,7 +149,7 @@
       :else
       (reduce
         (fn [^IPersistentMap this ^Map$Entry e]
-          (.assoc this (.getKey e) (.getKey e)))
+          (.assoc this (.getKey e) (.getValue e)))
         this
         o)))
   (empty [this] (IndexedPersistentMap. (.empty ^IPersistentCollection m) nil nil nil auto))
