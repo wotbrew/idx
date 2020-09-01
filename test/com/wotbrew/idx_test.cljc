@@ -125,6 +125,9 @@
   (is (= [2 1 0] (descending {:foo 0, :bar 1, :baz 2 :qux 3} identity < 3)))
   (is (= [2 1 0] (descending (auto {:foo 0, :bar 1, :baz 2 :qux 3}) identity < 3))))
 
+(deftest conj-on-map-entry-test
+  (is (= {42 43} (conj (auto {}) (first {42 43})))))
+
 ;; properties
 
 (def index-pair

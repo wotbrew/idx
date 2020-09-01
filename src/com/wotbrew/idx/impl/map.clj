@@ -140,7 +140,7 @@
     (cond
       (instance? Map$Entry o)
       (let [^Map$Entry e o]
-        (.assoc this (.getKey e) (.getKey e)))
+        (.assoc this (.getKey e) (.getValue e)))
       (vector? o)
       (if (= 2 (count o))
         (throw (IllegalArgumentException. "Vector arg to map conj must be a pair"))
