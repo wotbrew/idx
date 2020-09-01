@@ -22,7 +22,7 @@ indexed-vector
 
 ## Latest version
 
-lein `[com.wotbrew/idx "0.1.0"]` or deps `com.wotbrew/idx {:mvn/version "0.1.0"}`.
+lein `[com.wotbrew/idx "0.1.1"]` or deps `com.wotbrew/idx {:mvn/version "0.1.1"}`.
 
 ## Features
 
