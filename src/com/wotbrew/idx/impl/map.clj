@@ -143,8 +143,8 @@
         (.assoc this (.getKey e) (.getValue e)))
       (vector? o)
       (if (= 2 (count o))
-        (throw (IllegalArgumentException. "Vector arg to map conj must be a pair"))
-        (.assoc this (nth o 0) (nth o 1)))
+        (.assoc this (nth o 0) (nth o 1))
+        (throw (IllegalArgumentException. "Vector arg to map conj must be a pair")))
       (map? o) (reduce-kv assoc this o)
       :else
       (reduce
